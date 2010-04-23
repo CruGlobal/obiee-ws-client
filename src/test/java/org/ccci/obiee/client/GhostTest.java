@@ -22,8 +22,8 @@ public class GhostTest
         System.setProperty("http.nonProxyHosts", "hart-*|harta|*.ccci.org");
     }
     
-    final static String TEST_USER = "MDREES";
-    final static String TEST_PASSWORD= "MDREES";
+    final static String TEST_USER = "***";
+    final static String TEST_PASSWORD= "***";
     
 //    @Test
     public void testLogonLogoff()

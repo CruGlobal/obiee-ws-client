@@ -1,0 +1,15 @@
+<jaxws:bindings
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+    xmlns:jaxws="http://java.sun.com/xml/ns/jaxws"
+    
+    wsdlLocation="http://hart-a730:7001/Analytics/saw.dll?WSDL">
+    <jaxws:package name="com.siebel.analytics.web.soap.v5"/>
+    
+    <jaxws:bindings node="wsdl:definitions/wsdl:portType[@name='ReplicationServiceSoap']/wsdl:operation[@name='import']">
+        <!-- change java method name from import() to _import() since 'import' is a java keyword.  '_import' is the
+        name used in OBIEE's documentation (download.oracle.com/docs/cd/B40078_02/doc/bi.1013/b31769.pdf) -->
+        <jaxws:method name="_import"/>   
+    </jaxws:bindings> 
+    
+</jaxws:bindings>

@@ -1,0 +1,14 @@
+<jaxb:bindings
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"               
+    xmlns:jaxb="http://java.sun.com/xml/ns/jaxb"
+    
+    jaxb:version="2.1">
+    <jaxb:bindings schemaLocation="http://hart-a730:7001/Analytics/res/wsdl/schemas/sawservices.xsd" node="/xsd:schema">
+    
+      <jaxb:schemaBindings>
+        <jaxb:package name="com.siebel.analytics.web.soap.v5.model"/>
+      </jaxb:schemaBindings>
+    
+    </jaxb:bindings>
+</jaxb:bindings>

@@ -1,0 +1,139 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.ccci</groupId>
+  <artifactId>obiee-ws-client</artifactId>
+  <name>OBIEE Web Service Client</name>
+  <version>1.0-SNAPSHOT</version>
+  <description>A client library generated from the wsdl of CCCI's OBIEE instance </description>
+  
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>jaxws-maven-plugin</artifactId>
+        <version>1.12</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>wsimport</goal>
+            </goals>
+            <configuration>
+              <wsdlUrls>
+                <wsdlUrl>http://hart-a730:7001/Analytics/saw.dll?WSDL</wsdlUrl>
+              </wsdlUrls>
+              <args>
+               <!-- rather lame that wsimport forces us to specify this separately, when it's referenced in the wsdl: -->
+               <param>-b</param>
+               <param>http://hart-a730:7001/Analytics/res/wsdl/schemas/sawservices.xsd</param>
+               <param>-b</param>
+               <param>src/main/resources/jaxws-bindings.xml</param>
+               <param>-b</param>
+               <param>src/main/resources/jaxb-bindings.xml</param>
+              </args>
+            </configuration>
+          </execution>
+        </executions>
+
+        <dependencies>
+          <dependency>
+            <groupId>com.sun.xml.ws</groupId>
+            <artifactId>jaxws-tools</artifactId>
+            <version>2.1.4</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+      
+      <plugin>
+      	<groupId>org.apache.maven.plugins</groupId>
+      	<artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+         <source>1.5</source>
+          <target>1.5</target>
+        </configuration>
+      </plugin>
+      
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+     </plugin>
+     
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${basedir}/target/jaxws/wsimport/java</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>  
+    </plugins>
+   </build> 
+   
+  <dependencies>
+    <dependency>
+      <groupId>org.testng</groupId>
+      <artifactId>testng</artifactId>
+       <version>5.10</version>
+      <classifier>jdk15</classifier>
+      <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>junit</groupId> 
+          <artifactId>junit</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>javax.xml.ws</groupId>
+      <artifactId>jaxws-api</artifactId>
+      <version>2.1-1</version>
+      <scope>provided</scope>
+      
+      <exclusions>
+        <exclusion>
+          <groupId>javax.jws</groupId> 
+          <artifactId>jsr181</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>javax.jws</groupId>
+      <artifactId>jsr181-api</artifactId>
+      <version>1.0-MR1</version>
+      <scope>provided</scope>
+    </dependency>
+  
+    <dependency>
+      <groupId>com.sun.xml.ws</groupId>
+      <artifactId>jaxws-rt</artifactId>
+      <version>2.1.4</version>
+      <scope>provided</scope>
+    </dependency>
+  
+  </dependencies>
+<!-- 
+  <properties>
+    <http.nonProxyHosts>hart-*|harta|*.ccci.org</http.nonProxyHosts>
+  </properties>
+ -->  
+</project>

@@ -19,12 +19,15 @@
             </goals>
             <configuration>
               <wsdlUrls>
-                <wsdlUrl>http://hart-a730:7001/Analytics/saw.dll?WSDL</wsdlUrl>
+                <wsdlUrl>http://hart-a730.ccci.org:7001/Analytics/saw.dll?WSDL</wsdlUrl>
               </wsdlUrls>
               <args>
-               <!-- rather lame that wsimport forces us to specify this separately, when it's referenced in the wsdl: -->
+               <!-- 
+                 Answers' wsdl file erroneously imports the xsd as a wsdl:import, not an xsd:import, so we have to manually tell it
+                 where to get the xsd.  This also generates a warning message at runtime, but we can safely ignore it.
+                -->
                <param>-b</param>
-               <param>http://hart-a730:7001/Analytics/res/wsdl/schemas/sawservices.xsd</param>
+               <param>http://hart-a730.ccci.org:7001/Analytics/res/wsdl/schemas/sawservices.xsd</param>
                <param>-b</param>
                <param>src/main/resources/jaxws-bindings.xml</param>
                <param>-b</param>
@@ -144,12 +147,10 @@
       <version>1.6</version>
     </dependency>
 
-
-
   </dependencies>
-<!-- 
+  <!-- 
   <properties>
-    <http.nonProxyHosts>hart-*|harta|*.ccci.org</http.nonProxyHosts>
+    <http.nonProxyHosts>hart-*|harta*|*.ccci.org</http.nonProxyHosts>
   </properties>
- -->  
+   -->
 </project>

@@ -16,12 +16,6 @@ import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
 public class GhostTest
 {
 
-    static
-    {
-        //bypass the LH proxy server, which sometimes can't connect to the server under test
-        System.setProperty("http.nonProxyHosts", "hart-*|harta|*.ccci.org");
-    }
-    
     final static String TEST_USER = "***";
     final static String TEST_PASSWORD= "***";
     final static boolean credentialsAreReal = false;
@@ -36,7 +30,13 @@ public class GhostTest
         sessionService.logoff(sessionID);
     }
     
-    
+    @Test
+    public void testHttpNonProxyHosts()
+    {
+        System.out.println(System.getProperty("http.nonProxyHosts"));
+        System.out.println(System.getProperty("http.proxyHost"));
+        System.out.println(System.getProperty("http.proxyPort"));
+    }
     
     
     @Test(enabled = credentialsAreReal)

@@ -24,12 +24,6 @@ public class RowmapIntegrationTest
     AnalyticsManagerFactory factory;
     AnalyticsManager manager;
 
-    static
-    {
-        //bypass the LH proxy server, which sometimes can't connect to the server under test
-        System.setProperty("http.nonProxyHosts", "hart-*|harta|*.ccci.org");
-    }
-    
     @BeforeClass
     public void setupFactory()
     {

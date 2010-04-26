@@ -24,8 +24,9 @@ public class GhostTest
     
     final static String TEST_USER = "***";
     final static String TEST_PASSWORD= "***";
+    final static boolean credentialsAreReal = false;
     
-//    @Test
+    @Test(enabled = credentialsAreReal)
     public void testLogonLogoff()
     {
         SAWSessionService sessionServiceEndpoint = new SAWSessionService();
@@ -38,7 +39,7 @@ public class GhostTest
     
     
     
-    @Test
+    @Test(enabled = credentialsAreReal)
     public void testRunQuery()
     {
         XmlViewService xmlViewServiceEndpoint = new XmlViewService();

@@ -18,8 +18,8 @@ import com.siebel.analytics.web.soap.v5.XmlViewService;
 
 public class RowmapIntegrationTest
 {
-    private static final String USERNAME = "MDREES";
-    private static final String PASSWORD = "MDREES";
+    private static final String USERNAME = "***";
+    private static final String PASSWORD = "***";
 
     AnalyticsManagerFactory factory;
     AnalyticsManager manager;
@@ -43,7 +43,7 @@ public class RowmapIntegrationTest
     }
     
 
-    @Test
+    @Test(enabled = false)
     public void testRetrieveWithNoParameters()
     {
         List<SaiDonationRow> rows = manager.query(SaiDonationRow.class);

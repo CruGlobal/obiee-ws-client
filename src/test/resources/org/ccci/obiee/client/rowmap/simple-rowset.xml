@@ -1,0 +1,52 @@
+<rowset xmlns="urn:schemas-microsoft-com:xml-analysis:rowset">
+  <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:saw-sql="urn:saw-sql" targetNamespace="urn:schemas-microsoft-com:xml-analysis:rowset">
+    <xsd:complexType name="Row">
+      <xsd:sequence>
+        <!-- note: in practice, these elements have much more attributes than shown here. -->
+        <xsd:element name="Column0" 
+          saw-sql:tableHeading="Designation" 
+          saw-sql:columnHeading="Designation Number" />
+        <xsd:element name="Column1" 
+          saw-sql:tableHeading="Transaction Date" 
+          saw-sql:columnHeading="Transaction Date" />
+        <xsd:element name="Column2" 
+          saw-sql:tableHeading="Transaction Item" 
+          saw-sql:columnHeading="Amount" />
+        <xsd:element name="Column3" 
+          saw-sql:tableHeading="Fact - Transaction Items"
+          saw-sql:columnHeading="# Transaction Items" />
+      </xsd:sequence>
+    </xsd:complexType>
+  </xsd:schema>
+  <Row>
+    <Column0>0378570</Column0>
+    <Column1>2009-01-15T00:00:00</Column1>
+    <Column2>30.0</Column2>
+    <Column3>1</Column3>
+  </Row>
+  <Row>
+    <Column0>0378570</Column0>
+    <Column1>2009-02-15T00:00:00</Column1>
+    <Column2>30.0</Column2>
+    <Column3>1</Column3>
+  </Row>
+  <Row>
+    <Column0>0378570</Column0>
+    <Column1>2009-03-15T00:00:00</Column1>
+    <Column2>30.0</Column2>
+    <Column3>1</Column3>
+  </Row>
+  <Row>
+    <Column0>0378570</Column0>
+    <Column1>2009-12-30T00:00:00</Column1>
+    <Column2>37.0</Column2>
+    <Column3>1</Column3>
+  </Row>
+  <Row>
+    <Column0>0378570</Column0>
+    <Column1>2009-06-24T00:00:00</Column1>
+    <Column2>300.0</Column2>
+    <Column3>1</Column3>
+  </Row>
+</rowset>

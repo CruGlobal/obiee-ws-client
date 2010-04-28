@@ -6,6 +6,59 @@
   <version>1.0-SNAPSHOT</version>
   <description>A client library generated from the wsdl of CCCI's OBIEE instance </description>
   
+  
+    <repositories>
+      <repository>
+        <id>ccci-libs-releases</id>
+        <name>Libraries (Full Releases)</name>
+        <url>http://arkham.ccci.org/artifactory/libs-releases/</url>
+      </repository>
+    </repositories>
+    
+    <pluginRepositories>
+      <pluginRepository>
+        <id>ccci-plugins-releases</id>
+        <name>Plugins Repository (Full Releases)</name>
+        <url>http://arkham.ccci.org/artifactory/plugins-releases/</url>
+      </pluginRepository>
+      <pluginRepository>
+        <id>ccci-plugins-snapshots</id>
+        <name>Plugins Repository (Snapshots)</name>
+        <url>http://arkham.ccci.org/artifactory/plugins-snapshots/</url>
+      </pluginRepository>
+    </pluginRepositories>
+    
+    <issueManagement>
+      <system>Jira</system>
+      <url>http://itwiki.ccci.org/jira/browse/SSW</url>
+    </issueManagement>
+    
+    <ciManagement>
+      <system>Bamboo</system>
+    </ciManagement>
+    
+    <scm>
+      <connection>scm:svn:http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</connection>
+      <developerConnection>scm:svn:http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</developerConnection>
+      <!-- no fisheye yet: -->
+      <url>http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</url>
+    </scm>
+        
+    <distributionManagement>
+      <repository>
+        <id>artifacts.ccci.org-releases</id>
+        <name>artifacts.ccci.org-releases</name>
+        <url>http://arkham.ccci.org:80/artifactory/libs-releases-local</url>
+      </repository>
+    
+      <snapshotRepository>
+        <id>artifacts.ccci.org-snapshots</id>
+        <name>artifacts.ccci.org-snapshots</name>
+        <url>http://arkham.ccci.org:80/artifactory/libs-snapshots-local</url>
+      </snapshotRepository>
+    </distributionManagement>
+        
+  
   <build>
     <plugins>
       <plugin>

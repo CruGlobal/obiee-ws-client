@@ -3,7 +3,14 @@
     xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"               
     xmlns:jaxb="http://java.sun.com/xml/ns/jaxb"
     
-    jaxb:version="2.1">
+    version="2.1">
+    <!--
+      Note: the above should really be jaxb:version="2.1", but a bug in jdk6.0_18 prevents this usage.  The workaround is to
+      simply use 'version' instead of 'jaxb:version'.  
+      see http://forums.java.net/jive/thread.jspa?threadID=77253&tstart=0 and https://jaxp.dev.java.net/issues/show_bug.cgi?id=63
+    -->
+    
+    
     <jaxb:bindings schemaLocation="http://hart-a730.ccci.org:7001/Analytics/res/wsdl/schemas/sawservices.xsd" node="/xsd:schema">
     
       <jaxb:schemaBindings>

@@ -242,12 +242,32 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (RuntimeException e)
         {
-            throw new DataRetrievalException("unable to query OBIEE server", e);
+            throw new DataRetrievalException(
+                String.format(
+                    "unable to query report %s with %s", 
+                    reportPathConfiguration.value(),
+                    formatParamsAsString(params)), 
+                e);
         }
         
         return queryResults.getRowset();
     }
     
+    private String formatParamsAsString(ReportParams params)
+    {
+        return String.format("[variables=%s]", asMap(params.getVariables()));
+    }
+
+    private Map<String, Object> asMap(List<Variable> variables)
+    {
+        Map<String, Object> variableMap = new HashMap<String, Object>();
+        for (Variable variable : variables)
+        {
+            variableMap.put(variable.getName(), variable.getValue());
+        }
+        return variableMap;
+    }
+
     <T> RowBuilder<T> buildRowBuilder(Class<T> rowType, Document doc)
     {
         NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(doc);

@@ -115,12 +115,63 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         if (closed) throw new IllegalStateException("already closed");
     }
     
-    public <T> List<T> query(Class<T> rowType) throws Exception
+    public <T> Query<T> createQuery(Class<T> rowType)
+    {
+        return new QueryImpl<T>(rowType);
+    }
+    
+
+    public class QueryImpl<T> implements Query<T>
+    {
+
+        private final Class<T> rowType;
+        private Object selection;
+
+        public QueryImpl(Class<T> rowType)
+        {
+            this.rowType = rowType;
+        }
+
+        public Query<T> withSelection(Object selection)
+        {
+            if (selection == null) 
+                throw new NullPointerException("selection is null");
+            this.selection = selection;
+            return this;
+        }
+
+        public List<T> getResultList()
+        {
+            try
+            {
+                return query(rowType, selection);
+            }
+            catch (Exception e)
+            {
+                //TODO: remove this try/catch/wrap block when query() doesn't throw Exception
+                throw new RuntimeException(e);
+            }
+        }
+
+        public T getSingleResult()
+        {
+            List<T> resultList = getResultList();
+            if (resultList.size() == 0)
+                //TODO: this message could be nicer, including the selection criteria
+                throw new DataRetrievalException("No rows were returned");
+            if (resultList.size() > 1)
+                throw new DataRetrievalException("More than one row was returned");
+            return resultList.get(0);
+        }
+
+    }
+    
+    <T> List<T> query(Class<T> rowType) throws Exception
     {
     	return query(rowType, null);
     }
     
-    public <T> List<T> query(Class<T> rowType, Object reportParams) throws Exception
+    <T> List<T> query(Class<T> rowType, Object reportParams) throws Exception
     {
     	checkOpen();
         if (rowType == null)
@@ -129,7 +180,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
         if (reportPathConfiguration == null)
         {
-            throw new IllegalArgumentException(rowType.getName() + " is not a valid OBIEE report row");
+            throw new IllegalArgumentException(
+                rowType.getName() + " is not a valid OBIEE report row; it is not annotated @" + ReportPath.class.getSimpleName());
         }
         
         String rowset = queryForRowsetXml(reportPathConfiguration, reportParams);

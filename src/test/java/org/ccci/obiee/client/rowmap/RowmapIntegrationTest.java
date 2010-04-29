@@ -47,7 +47,7 @@ public class RowmapIntegrationTest
     @Test(enabled = true)
     public void testRetrieveWithNoParameters() throws Exception
     {
-        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class);
+        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class).getResultList();
         
         assertThat(rows, Matchers.hasSize(70));
         SaiDonationRow first = rows.get(0);
@@ -69,7 +69,9 @@ public class RowmapIntegrationTest
     	SaiDonationParameters params = new SaiDonationParameters();
         params.designationNumber = "0478406";
         
-        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class,params);
+        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class)
+            .withSelection(params)
+            .getResultList();
         
         assertThat(rows, Matchers.hasSize(86));
         SaiDonationRow first = rows.get(0);
@@ -90,7 +92,9 @@ public class RowmapIntegrationTest
     	SaiDonationParameters params = new SaiDonationParameters();
     	params.accountNumber = "000376764";
         
-        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class,params);
+        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class)
+            .withSelection(params)
+            .getResultList();
         
         assertThat(rows, Matchers.hasSize(10));
         SaiDonationRow first = rows.get(0);
@@ -113,7 +117,9 @@ public class RowmapIntegrationTest
     	params.accountNumber = "000442787";
     	params.designationNumber = "0378570";
         
-        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class,params);
+        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class)
+            .withSelection(params)
+            .getResultList();
         
         assertThat(rows, Matchers.hasSize(9));
         SaiDonationRow first = rows.get(0);
@@ -134,7 +140,9 @@ public class RowmapIntegrationTest
     	params.donationBegin = new LocalDate(2009, 12, 1);
     	params.donationEnd = new LocalDate(2009, 12, 31);
         
-        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class,params);
+        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class)
+            .withSelection(params)
+            .getResultList();
         
         assertThat(rows, Matchers.hasSize(4));
         SaiDonationRow first = rows.get(0);

@@ -1,9 +1,8 @@
 package org.ccci.obiee.client.rowmap;
 
-import java.util.List;
 
 /**
- * The main API point for querying the Analytics data source.
+ * The main API point for querying the Analytics system.
  * 
  * Instances are not thread-safe.
  * 
@@ -16,16 +15,14 @@ public interface AnalyticsManager
 {
 
     /**
-     * 
-     * @param <T>
-     * @param class1
-     * @return
-     * @throws Exception 
+     * Creates a {@link Query} object for executing queries against the Analytics system.
+     * @param <T> the type of rows that will be returned
+     * @param rowType specifies the type of rows that will be returned, and is used to determine which report to query against
+     * @return the new {@code Query} instance
+     * @throws RowmapConfigurationException if the given rowType is configured incorrectly
      */
-    <T> List<T> query(Class<T> class1) throws Exception;
+    <T> Query<T> createQuery(Class<T> rowType);
     
-    <T> List<T> query(Class<T> class1, Object reportParams) throws Exception;
-
     /**
      * Closes this manager
      */

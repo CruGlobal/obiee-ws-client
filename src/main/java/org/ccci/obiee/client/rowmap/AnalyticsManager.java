@@ -20,8 +20,11 @@ public interface AnalyticsManager
      * @param <T>
      * @param class1
      * @return
+     * @throws Exception 
      */
-    <T> List<T> query(Class<T> class1);
+    <T> List<T> query(Class<T> class1) throws Exception;
+    
+    <T> List<T> query(Class<T> class1, Object reportParams) throws Exception;
 
     /**
      * Closes this manager

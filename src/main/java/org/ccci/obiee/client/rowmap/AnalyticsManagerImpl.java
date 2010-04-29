@@ -2,6 +2,7 @@ package org.ccci.obiee.client.rowmap;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -20,6 +21,7 @@ import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import org.ccci.obiee.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.rowmap.annotation.ReportPath;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -33,6 +35,7 @@ import com.siebel.analytics.web.soap.v5.XmlViewServiceSoap;
 import com.siebel.analytics.web.soap.v5.model.QueryResults;
 import com.siebel.analytics.web.soap.v5.model.ReportParams;
 import com.siebel.analytics.web.soap.v5.model.ReportRef;
+import com.siebel.analytics.web.soap.v5.model.Variable;
 import com.siebel.analytics.web.soap.v5.model.XMLQueryExecutionOptions;
 import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
 
@@ -112,9 +115,14 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         if (closed) throw new IllegalStateException("already closed");
     }
     
-    public <T> List<T> query(Class<T> rowType)
+    public <T> List<T> query(Class<T> rowType) throws Exception
     {
-        checkOpen();
+    	return query(rowType, null);
+    }
+    
+    public <T> List<T> query(Class<T> rowType, Object reportParams) throws Exception
+    {
+    	checkOpen();
         if (rowType == null)
             throw new NullPointerException("rowType is null");
         
@@ -124,7 +132,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             throw new IllegalArgumentException(rowType.getName() + " is not a valid OBIEE report row");
         }
         
-        String rowset = queryForRowsetXml(reportPathConfiguration);
+        String rowset = queryForRowsetXml(reportPathConfiguration, reportParams);
         Document doc = buildDocument(rowset);
         RowBuilder<T> rowBuilder = buildRowBuilder(rowType, doc);
         NodeList rows = getRows(doc);
@@ -137,9 +145,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         
         return results;
-    }
-
-    private String queryForRowsetXml(ReportPath reportPathConfiguration)
+	}
+    
+    private String queryForRowsetXml(ReportPath reportPathConfiguration, Object reportParams ) throws Exception
     {
         ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
@@ -149,7 +157,33 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         executionOptions.setMaxRowsPerPage(-1);
         executionOptions.setPresentationInfo(true);
         
-        ReportParams reportParams = new ReportParams();
+        ReportParams params = new ReportParams();
+        
+        if(reportParams != null)
+        {
+        	Variable var;
+	        Class clazz = reportParams.getClass();
+	    	
+	    	for(Field field: clazz.getDeclaredFields())
+	    	{
+	    		ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
+	    		if(reportParamVar != null && field.get(reportParams) != null)
+	    		{
+	    			var = new Variable();
+	    			if(reportParamVar.name().equals(""))
+	    			{
+	    				var.setName(field.getName());
+	    			}
+	    			else
+	    			{
+	    				var.setName(reportParamVar.name());
+	    			}
+	    			var.setValue(field.get(reportParams).toString());
+	    			params.getVariables().add(var);
+	    		}
+	    	}
+        }
+        
         QueryResults queryResults;
         try
         {
@@ -157,7 +191,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 report, 
                 outputFormat, 
                 executionOptions, 
-                reportParams, 
+                params, 
                 sessionId);
         }
         catch (RuntimeException e)
@@ -167,7 +201,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         
         return queryResults.getRowset();
     }
-
+    
     <T> RowBuilder<T> buildRowBuilder(Class<T> rowType, Document doc)
     {
         NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(doc);

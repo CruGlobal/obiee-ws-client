@@ -2,6 +2,7 @@ package org.ccci.obiee.client.rowmap;
 
 import java.math.BigDecimal;
 
+import org.ccci.obiee.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.rowmap.annotation.ReportPath;
 import org.ccci.obiee.rowmap.annotation.Column;
 import org.ccci.obiee.rowmap.annotation.Scale;
@@ -11,6 +12,18 @@ import org.joda.time.LocalDate;
 public class SaiDonationRow
 {
 
+	public static class SaiDonationParameters
+	{
+		@ReportParamVariable
+		public String designationNumber;
+		@ReportParamVariable
+		public String accountNumber;
+		@ReportParamVariable
+		public LocalDate donationBegin;
+		@ReportParamVariable
+		public LocalDate donationEnd;
+	}
+	
     @Column(tableHeading = "Designation")
     private String designationNumber;
     

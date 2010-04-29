@@ -44,7 +44,7 @@ public class RowmapIntegrationTest
     }
     
 
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testRetrieveWithNoParameters() throws Exception
     {
         List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class).getResultList();
@@ -63,7 +63,7 @@ public class RowmapIntegrationTest
         assertThat(first.getTransactionNumber(), is("1F9Z500-000376764"));
     }
     
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testRetrieveWithDesignationParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -86,7 +86,7 @@ public class RowmapIntegrationTest
         assertThat(first.getTransactionNumber(), is("R139054-000105923"));
     }
     
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testRetrieveWithAccountNumberParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -110,7 +110,7 @@ public class RowmapIntegrationTest
         assertThat(first.getTransactionNumber(), is("1F9Z500-000376764"));
     }
     
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testRetrieveWithAccountNumberAndDesignationParameters() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -133,7 +133,7 @@ public class RowmapIntegrationTest
         assertThat(first.getTransactionNumber(), is("R141482-000442787"));
     }
     
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testRetrieveWithDateParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();

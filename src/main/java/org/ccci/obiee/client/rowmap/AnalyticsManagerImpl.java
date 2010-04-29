@@ -117,11 +117,18 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     
     public <T> Query<T> createQuery(Class<T> rowType)
     {
+        checkOpen();
+        if (rowType == null)
+            throw new NullPointerException("rowType is null");
+        if (!rowType.isAnnotationPresent(ReportPath.class))
+        {
+            throw new IllegalArgumentException(
+                rowType.getName() + " is not a valid OBIEE report row; it is not annotated @" + ReportPath.class.getSimpleName());
+        }
         return new QueryImpl<T>(rowType);
     }
     
-
-    public class QueryImpl<T> implements Query<T>
+    class QueryImpl<T> implements Query<T>
     {
 
         private final Class<T> rowType;
@@ -166,23 +173,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     }
     
-    <T> List<T> query(Class<T> rowType) throws Exception
-    {
-    	return query(rowType, null);
-    }
-    
     <T> List<T> query(Class<T> rowType, Object reportParams) throws Exception
     {
     	checkOpen();
-        if (rowType == null)
-            throw new NullPointerException("rowType is null");
-        
         ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
-        if (reportPathConfiguration == null)
-        {
-            throw new IllegalArgumentException(
-                rowType.getName() + " is not a valid OBIEE report row; it is not annotated @" + ReportPath.class.getSimpleName());
-        }
         
         String rowset = queryForRowsetXml(reportPathConfiguration, reportParams);
         Document doc = buildDocument(rowset);

@@ -18,7 +18,8 @@ import java.lang.annotation.Target;
 public @interface ReportParamVariable 
 {
 	/**
-	 * Specifies the name of the parameter.  This is required.
+	 * Specifies the name of the parameter.  This is optional.  If it is not specified, the
+	 * variable name (as it is) will be used instead.
 	 */
 	String name() default "";
 }

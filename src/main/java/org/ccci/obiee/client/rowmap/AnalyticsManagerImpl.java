@@ -121,24 +121,72 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         if (closed) throw new IllegalStateException("already closed");
     }
     
-    public <T> List<T> query(Class<T> rowType) throws Exception
+    public <T> Query<T> createQuery(Class<T> rowType)
     {
-    	return query(rowType, null);
-    }
-    
-    public <T> List<T> query(Class<T> rowType, Object reportParams) throws Exception
-    {
-    	checkOpen();
+        checkOpen();
         if (rowType == null)
             throw new NullPointerException("rowType is null");
-        
-        ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
-        if (reportPathConfiguration == null)
+        if (!rowType.isAnnotationPresent(ReportPath.class))
         {
-            throw new IllegalArgumentException(rowType.getName() + " is not a valid OBIEE report row");
+            throw new IllegalArgumentException(
+                rowType.getName() + " is not a valid OBIEE report row; it is not annotated @" + ReportPath.class.getSimpleName());
         }
-        
-        String rowset = queryForRowsetXml(reportPathConfiguration, reportParams);
+        return new QueryImpl<T>(rowType);
+    }
+    
+    class QueryImpl<T> implements Query<T>
+    {
+
+        private final Class<T> rowType;
+        private Object selection;
+
+        public QueryImpl(Class<T> rowType)
+        {
+            this.rowType = rowType;
+        }
+
+        public Query<T> withSelection(Object selection)
+        {
+            if (selection == null) 
+                throw new NullPointerException("selection is null");
+            this.selection = selection;
+            return this;
+        }
+
+        public List<T> getResultList()
+        {
+        	return query(rowType, selection);
+        }
+
+        public T getSingleResult()
+        {
+            List<T> resultList = getResultList();
+            if (resultList.size() == 0)
+                //TODO: this message could be nicer, including the selection criteria
+                throw new DataRetrievalException("No rows were returned");
+            if (resultList.size() > 1)
+                throw new DataRetrievalException("More than one row was returned");
+            return resultList.get(0);
+        }
+
+    }
+    
+    public <T> List<T> query(Class<T> rowType, Object reportParams)
+    {
+    	checkOpen();
+    	ReportPath reportPathConfiguration = null;
+    	String rowset = null;
+    	
+    	if(rowType == null)
+    		throw new NullPointerException("rowType is null");
+    	
+    	reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
+    	
+    	if(reportPathConfiguration == null)
+    		throw new IllegalArgumentException(rowType.getName() + " is not a valid OBIEE report row");
+    	
+    	rowset = queryForRowsetXml(reportPathConfiguration, reportParams);
+    	
         Document doc = buildDocument(rowset);
         RowBuilder<T> rowBuilder = buildRowBuilder(rowType, doc);
         NodeList rows = getRows(doc);
@@ -153,7 +201,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return results;
 	}
     
-    private String queryForRowsetXml(ReportPath reportPathConfiguration, Object reportParams ) throws Exception
+    private String queryForRowsetXml(ReportPath reportPathConfiguration, Object reportParams )
     {
         ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
@@ -182,47 +230,76 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (RuntimeException e)
         {
-            throw new DataRetrievalException("unable to query OBIEE server", e);
+        	throw new DataRetrievalException(
+                    String.format(
+                        "unable to query report %s with %s", 
+                        reportPathConfiguration.value(),
+                        formatParamsAsString(params)), 
+                    e);
         }
         
         return queryResults.getRowset();
     }
 
-	private void buildReportParams(Object reportParams, ReportParams params) throws IllegalAccessException 
+	private void buildReportParams(Object reportParams, ReportParams params) 
 	{
 		Variable var;
 		Class clazz = reportParams.getClass();
 		
-		for(Field field: clazz.getDeclaredFields())
+		try
 		{
-			ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
-			if(reportParamVar != null && field.get(reportParams) != null)
+			for(Field field: clazz.getDeclaredFields())
 			{
-				String fieldType = field.getType().getName();
-				var = new Variable();
-				if(reportParamVar.name().equals(""))
+				field.setAccessible(true);
+				ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
+				if(reportParamVar != null && field.get(reportParams) != null)
 				{
-					var.setName(field.getName());
+					String fieldType = field.getType().getName();
+					var = new Variable();
+					if(reportParamVar.name().equals(""))
+					{
+						var.setName(field.getName());
+					}
+					else
+					{
+						var.setName(reportParamVar.name());
+					}
+					if(fieldType.equals("java.lang.String"))
+					{
+						var.setValue(field.get(reportParams).toString());
+					}
+					else if(fieldType.equals("org.joda.time.LocalDate"))
+					{
+						LocalDate ld = (LocalDate)field.get(reportParams);
+						DateTime dTime = ld.toDateTimeAtCurrentTime();
+						Date dt = dTime.toDate();
+						var.setValue(dt);
+					}
+					params.getVariables().add(var);
 				}
-				else
-				{
-					var.setName(reportParamVar.name());
-				}
-				if(fieldType.equals("java.lang.String"))
-				{
-					var.setValue(field.get(reportParams).toString());
-				}
-				else if(fieldType.equals("org.joda.time.LocalDate"))
-				{
-					LocalDate ld = (LocalDate)field.get(reportParams);
-					DateTime dTime = ld.toDateTimeAtCurrentTime();
-					Date dt = dTime.toDate();
-					var.setValue(dt);
-				}
-				params.getVariables().add(var);
 			}
 		}
+		catch(IllegalAccessException e)
+		{
+			throw new RuntimeException(e.getMessage());
+		}
+		
 	}
+	
+	private String formatParamsAsString(ReportParams params)
+    {
+        return String.format("[variables=%s]", asMap(params.getVariables()));
+    }
+
+    private Map<String, Object> asMap(List<Variable> variables)
+    {
+        Map<String, Object> variableMap = new HashMap<String, Object>();
+        for (Variable variable : variables)
+        {
+            variableMap.put(variable.getName(), variable.getValue());
+        }
+        return variableMap;
+    }
     
     <T> RowBuilder<T> buildRowBuilder(Class<T> rowType, Document doc)
     {

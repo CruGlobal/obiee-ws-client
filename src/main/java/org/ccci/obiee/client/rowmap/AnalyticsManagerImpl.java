@@ -3,7 +3,10 @@ package org.ccci.obiee.client.rowmap;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.Field;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.ArrayList;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -23,6 +26,9 @@ import javax.xml.xpath.XPathFactory;
 
 import org.ccci.obiee.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.rowmap.annotation.ReportPath;
+import org.hamcrest.core.SubstringMatcher;
+import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -115,68 +121,22 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         if (closed) throw new IllegalStateException("already closed");
     }
     
-    public <T> Query<T> createQuery(Class<T> rowType)
+    public <T> List<T> query(Class<T> rowType) throws Exception
     {
-        checkOpen();
-        if (rowType == null)
-            throw new NullPointerException("rowType is null");
-        if (!rowType.isAnnotationPresent(ReportPath.class))
-        {
-            throw new IllegalArgumentException(
-                rowType.getName() + " is not a valid OBIEE report row; it is not annotated @" + ReportPath.class.getSimpleName());
-        }
-        return new QueryImpl<T>(rowType);
+    	return query(rowType, null);
     }
     
-    class QueryImpl<T> implements Query<T>
-    {
-
-        private final Class<T> rowType;
-        private Object selection;
-
-        public QueryImpl(Class<T> rowType)
-        {
-            this.rowType = rowType;
-        }
-
-        public Query<T> withSelection(Object selection)
-        {
-            if (selection == null) 
-                throw new NullPointerException("selection is null");
-            this.selection = selection;
-            return this;
-        }
-
-        public List<T> getResultList()
-        {
-            try
-            {
-                return query(rowType, selection);
-            }
-            catch (Exception e)
-            {
-                //TODO: remove this try/catch/wrap block when query() doesn't throw Exception
-                throw new RuntimeException(e);
-            }
-        }
-
-        public T getSingleResult()
-        {
-            List<T> resultList = getResultList();
-            if (resultList.size() == 0)
-                //TODO: this message could be nicer, including the selection criteria
-                throw new DataRetrievalException("No rows were returned");
-            if (resultList.size() > 1)
-                throw new DataRetrievalException("More than one row was returned");
-            return resultList.get(0);
-        }
-
-    }
-    
-    <T> List<T> query(Class<T> rowType, Object reportParams) throws Exception
+    public <T> List<T> query(Class<T> rowType, Object reportParams) throws Exception
     {
     	checkOpen();
+        if (rowType == null)
+            throw new NullPointerException("rowType is null");
+        
         ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
+        if (reportPathConfiguration == null)
+        {
+            throw new IllegalArgumentException(rowType.getName() + " is not a valid OBIEE report row");
+        }
         
         String rowset = queryForRowsetXml(reportPathConfiguration, reportParams);
         Document doc = buildDocument(rowset);
@@ -207,27 +167,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         
         if(reportParams != null)
         {
-        	Variable var;
-	        Class clazz = reportParams.getClass();
-	    	
-	    	for(Field field: clazz.getDeclaredFields())
-	    	{
-	    		ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
-	    		if(reportParamVar != null && field.get(reportParams) != null)
-	    		{
-	    			var = new Variable();
-	    			if(reportParamVar.name().equals(""))
-	    			{
-	    				var.setName(field.getName());
-	    			}
-	    			else
-	    			{
-	    				var.setName(reportParamVar.name());
-	    			}
-	    			var.setValue(field.get(reportParams).toString());
-	    			params.getVariables().add(var);
-	    		}
-	    	}
+        	buildReportParams(reportParams, params);
         }
         
         QueryResults queryResults;
@@ -242,32 +182,48 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (RuntimeException e)
         {
-            throw new DataRetrievalException(
-                String.format(
-                    "unable to query report %s with %s", 
-                    reportPathConfiguration.value(),
-                    formatParamsAsString(params)), 
-                e);
+            throw new DataRetrievalException("unable to query OBIEE server", e);
         }
         
         return queryResults.getRowset();
     }
+
+	private void buildReportParams(Object reportParams, ReportParams params) throws IllegalAccessException 
+	{
+		Variable var;
+		Class clazz = reportParams.getClass();
+		
+		for(Field field: clazz.getDeclaredFields())
+		{
+			ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
+			if(reportParamVar != null && field.get(reportParams) != null)
+			{
+				String fieldType = field.getType().getName();
+				var = new Variable();
+				if(reportParamVar.name().equals(""))
+				{
+					var.setName(field.getName());
+				}
+				else
+				{
+					var.setName(reportParamVar.name());
+				}
+				if(fieldType.equals("java.lang.String"))
+				{
+					var.setValue(field.get(reportParams).toString());
+				}
+				else if(fieldType.equals("org.joda.time.LocalDate"))
+				{
+					LocalDate ld = (LocalDate)field.get(reportParams);
+					DateTime dTime = ld.toDateTimeAtCurrentTime();
+					Date dt = dTime.toDate();
+					var.setValue(dt);
+				}
+				params.getVariables().add(var);
+			}
+		}
+	}
     
-    private String formatParamsAsString(ReportParams params)
-    {
-        return String.format("[variables=%s]", asMap(params.getVariables()));
-    }
-
-    private Map<String, Object> asMap(List<Variable> variables)
-    {
-        Map<String, Object> variableMap = new HashMap<String, Object>();
-        for (Variable variable : variables)
-        {
-            variableMap.put(variable.getName(), variable.getValue());
-        }
-        return variableMap;
-    }
-
     <T> RowBuilder<T> buildRowBuilder(Class<T> rowType, Document doc)
     {
         NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(doc);

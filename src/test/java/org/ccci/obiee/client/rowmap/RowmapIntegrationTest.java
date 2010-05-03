@@ -44,12 +44,12 @@ public class RowmapIntegrationTest
     }
     
 
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testRetrieveWithNoParameters() throws Exception
     {
-        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class).getResultList();
+        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class);
         
-        assertThat(rows, Matchers.hasSize(70));
+        assertThat(rows, Matchers.hasSize(295));
         SaiDonationRow first = rows.get(0);
         
         assertThat(first.getAccountName(), is("Shires, Mark R & Carol"));
@@ -58,45 +58,39 @@ public class RowmapIntegrationTest
         assertThat(first.getDesignationNumber(), is("0378570"));
         assertThat(first.getNumberOfTransactionItems(), is(1));
         assertThat(first.getSubType(), is("EFT"));
-        assertThat(first.getTransactionDate(), is(new LocalDate(2009, 1, 15)));
-        assertThat(first.getTransactionItemRowWid(), is("12846673.0"));
-        assertThat(first.getTransactionNumber(), is("1F9Z500-000376764"));
+        assertThat(first.getTransactionDate(), is(new LocalDate(2007, 1, 15)));
+        assertThat(first.getTransactionNumber(), is("1F7Z500-000376764"));
     }
     
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testRetrieveWithDesignationParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
         params.designationNumber = "0478406";
         
-        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class)
-            .withSelection(params)
-            .getResultList();
+        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class,params);
         
-        assertThat(rows, Matchers.hasSize(86));
+        assertThat(rows, Matchers.hasSize(302));
         SaiDonationRow first = rows.get(0);
         
         assertThat(first.getAccountName(), is("Johnson, Dirke D & Lorna"));
         assertThat(first.getAccountNumber(), is("000105923"));
-        assertThat(first.getAmount(), is(new BigDecimal("50.00")));
+        assertThat(first.getAmount(), is(new BigDecimal("150.00")));
         assertThat(first.getNumberOfTransactionItems(), is(1));
         assertThat(first.getSubType(), is("Check"));
-        assertThat(first.getTransactionDate(), is(new LocalDate(2009, 1, 05)));
-        assertThat(first.getTransactionItemRowWid(), is("13415761.0"));
-        assertThat(first.getTransactionNumber(), is("R139054-000105923"));
+        assertThat(first.getTransactionDate(), is(new LocalDate(2007, 02, 07)));
+        assertThat(first.getTransactionNumber(), is("R092530-000105923"));
     }
     
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testRetrieveWithAccountNumberParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
     	params.accountNumber = "000376764";
         
-        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class)
-            .withSelection(params)
-            .getResultList();
+        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class,params);
         
-        assertThat(rows, Matchers.hasSize(10));
+        assertThat(rows, Matchers.hasSize(37));
         SaiDonationRow first = rows.get(0);
         
         assertThat(first.getAccountName(), is("Shires, Mark R & Carol"));
@@ -105,44 +99,38 @@ public class RowmapIntegrationTest
         assertThat(first.getDesignationNumber(), is("0378570"));
         assertThat(first.getNumberOfTransactionItems(), is(1));
         assertThat(first.getSubType(), is("EFT"));
-        assertThat(first.getTransactionDate(), is(new LocalDate(2009, 1, 15)));
-        assertThat(first.getTransactionItemRowWid(), is("12846673.0"));
-        assertThat(first.getTransactionNumber(), is("1F9Z500-000376764"));
+        assertThat(first.getTransactionDate(), is(new LocalDate(2007, 1, 15)));
+        assertThat(first.getTransactionNumber(), is("1F7Z500-000376764"));
     }
     
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testRetrieveWithAccountNumberAndDesignationParameters() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
     	params.accountNumber = "000442787";
     	params.designationNumber = "0378570";
         
-        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class)
-            .withSelection(params)
-            .getResultList();
+        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class,params);
         
-        assertThat(rows, Matchers.hasSize(9));
+        assertThat(rows, Matchers.hasSize(27));
         SaiDonationRow first = rows.get(0);
         
         assertThat(first.getAccountName(), is("Beckman, Michelle L"));
-        assertThat(first.getAmount(), is(new BigDecimal("44.00")));
+        assertThat(first.getAmount(), is(new BigDecimal("22.00")));
         assertThat(first.getNumberOfTransactionItems(), is(1));
         assertThat(first.getSubType(), is("Check"));
-        assertThat(first.getTransactionDate(), is(new LocalDate(2009, 02, 12)));
-        assertThat(first.getTransactionItemRowWid(), is("13118993.0"));
-        assertThat(first.getTransactionNumber(), is("R141482-000442787"));
+        assertThat(first.getTransactionDate(), is(new LocalDate(2007, 01, 05)));
+        assertThat(first.getTransactionNumber(), is("R090265-000442787"));
     }
     
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testRetrieveWithDateParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
     	params.donationBegin = new LocalDate(2009, 12, 1);
     	params.donationEnd = new LocalDate(2009, 12, 31);
         
-        List<SaiDonationRow> rows = manager.createQuery(SaiDonationRow.class)
-            .withSelection(params)
-            .getResultList();
+        List<SaiDonationRow> rows = manager.query(SaiDonationRow.class,params);
         
         assertThat(rows, Matchers.hasSize(4));
         SaiDonationRow first = rows.get(0);
@@ -154,7 +142,6 @@ public class RowmapIntegrationTest
         assertThat(first.getNumberOfTransactionItems(), is(1));
         assertThat(first.getSubType(), is("Check"));
         assertThat(first.getTransactionDate(), is(new LocalDate(2009, 12, 29)));
-        assertThat(first.getTransactionItemRowWid(), is("13608261.0"));
         assertThat(first.getTransactionNumber(), is("1-2168786"));
     }
 }

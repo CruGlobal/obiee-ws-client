@@ -14,6 +14,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import com.siebel.analytics.web.soap.v5.ReportEditingService;
 import com.siebel.analytics.web.soap.v5.SAWSessionService;
 import com.siebel.analytics.web.soap.v5.XmlViewService;
 
@@ -28,7 +29,7 @@ public class RowmapIntegrationTest
     @BeforeClass
     public void setupFactory()
     {
-        factory = new AnalyticsManagerFactoryImpl(new SAWSessionService(), new XmlViewService(), USERNAME, PASSWORD);
+        factory = new AnalyticsManagerFactoryImpl(new SAWSessionService(), new XmlViewService(), new ReportEditingService(), USERNAME, PASSWORD);
     }
     
     @BeforeMethod
@@ -73,7 +74,7 @@ public class RowmapIntegrationTest
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
         
-        assertThat(rows, Matchers.hasSize(302));
+        assertThat(rows, Matchers.hasSize(304));
         SaiDonationRow first = rows.get(0);
         
         assertThat(first.getAccountName(), is("Johnson, Dirke D & Lorna"));
@@ -152,5 +153,92 @@ public class RowmapIntegrationTest
         assertThat(first.getSubType(), is("Check"));
         assertThat(first.getTransactionDate(), is(new LocalDate(2009, 12, 29)));
         assertThat(first.getTransactionNumber(), is("1-2168786"));
+    }
+    
+    @Test(enabled = true)
+    public void testSortByAmount() throws Exception
+    {
+    	SortDirection direction = SortDirection.ASCENDING;
+    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+    	query.orderBy("Transaction Item", "Amount", direction);
+    	List<SaiDonationRow> rows = query.getResultList();
+    	
+    	assertThat(rows, Matchers.hasSize(295));
+        SaiDonationRow first = rows.get(0);
+        
+        assertThat(first.getAccountName(), is("Cowsky, Albert F III and Mary"));
+        assertThat(first.getAccountNumber(), is("440998856"));
+        assertThat(first.getAmount(), is(new BigDecimal("2.00")));
+        assertThat(first.getDesignationNumber(), is("0378570"));
+        assertThat(first.getNumberOfTransactionItems(), is(1));
+        assertThat(first.getSubType(), is("Wire"));
+        assertThat(first.getTransactionDate(), is(new LocalDate(2008, 01, 18)));
+        assertThat(first.getTransactionNumber(), is("1I8A19C-440998856"));
+    }
+    
+    @Test(enabled = false)
+    public void testSortByAmountDesc() throws Exception
+    {
+    	SortDirection direction = SortDirection.DESCENDING;
+    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+    	query.orderBy("Transaction Item", "Amount", direction);
+    	List<SaiDonationRow> rows = query.getResultList();
+    	
+    	assertThat(rows, Matchers.hasSize(295));
+        SaiDonationRow first = rows.get(0);
+        
+        assertThat(first.getAccountName(), is("Totally Anonymous"));
+        assertThat(first.getAccountNumber(), is("900000009"));
+        assertThat(first.getAmount(), is(new BigDecimal("2500.00")));
+        assertThat(first.getDesignationNumber(), is("0378570"));
+        assertThat(first.getNumberOfTransactionItems(), is(1));
+        assertThat(first.getSubType(), is("Check"));
+        assertThat(first.getTransactionDate(), is(new LocalDate(2008, 04, 17)));
+        assertThat(first.getTransactionNumber(), is("4H8K207-437153485"));
+    }
+    
+    @Test(enabled = true)
+    public void testSortByDate() throws Exception
+    {
+    	SortDirection direction = SortDirection.ASCENDING;
+    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+    	query.orderBy("- Transaction Date", "Transaction Date", direction);
+    	List<SaiDonationRow> rows = query.getResultList();
+    	
+    	assertThat(rows, Matchers.hasSize(295));
+        SaiDonationRow first = rows.get(0);
+        
+        assertThat(first.getAccountName(), is("Beckman, Michelle L"));
+        assertThat(first.getAccountNumber(), is("000442787"));
+        assertThat(first.getAmount(), is(new BigDecimal("22.00")));
+        assertThat(first.getDesignationNumber(), is("0378570"));
+        assertThat(first.getNumberOfTransactionItems(), is(1));
+        assertThat(first.getSubType(), is("Check"));
+        assertThat(first.getTransactionDate(), is(new LocalDate(2007, 01, 05)));
+        assertThat(first.getTransactionNumber(), is("R090265-000442787"));
+    }
+    
+    @Test(enabled = true)
+    public void testSortByAmountAndDesigParam() throws Exception
+    {
+    	SortDirection direction = SortDirection.ASCENDING;
+    	SaiDonationParameters params = new SaiDonationParameters();
+        params.designationNumber = "0478406";
+        
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+        query.withSelection(params);
+        query.orderBy("Transaction Item", "Amount", direction);
+    	List<SaiDonationRow> rows = query.getResultList();
+    	
+    	assertThat(rows, Matchers.hasSize(304));
+        SaiDonationRow first = rows.get(0);
+        
+        assertThat(first.getAccountName(), is("Forester, Thomas J"));
+        assertThat(first.getAccountNumber(), is("000549981"));
+        assertThat(first.getAmount(), is(new BigDecimal("10.00")));
+        assertThat(first.getNumberOfTransactionItems(), is(1));
+        assertThat(first.getSubType(), is("EFT"));
+        assertThat(first.getTransactionDate(), is(new LocalDate(2007, 01, 05)));
+        assertThat(first.getTransactionNumber(), is("157Z502-000549981"));
     }
 }

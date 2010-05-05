@@ -23,7 +23,13 @@ public interface Query<T>
      */
     public Query<T> withSelection(Object selection);
     
-    //TODO: some sort of orderBy(...)
+    /**
+     * Adds sort parameters to the query.  This is semantically equivalent to an SQL 'order by' clause.
+     * @param tableHead
+     * @param colName
+     * @return this Query instance to enable convenient method chaining
+     */
+    public Query<T> orderBy(String tableHead, String colName, SortDirection direction);
 
     /**
      * Executes the query and returns the returned row object. This should be invoked when exactly one row in the returned

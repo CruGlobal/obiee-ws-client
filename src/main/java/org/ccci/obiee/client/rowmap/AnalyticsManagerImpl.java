@@ -188,7 +188,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
     }
     
-    public <T> List<T> query(Class<T> rowType, Object reportParams, String tableHead, String colName, SortDirection direction)
+    private <T> List<T> query(Class<T> rowType, Object reportParams, String tableHead, String colName, SortDirection direction)
     {
     	checkOpen();
     	
@@ -263,7 +263,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         catch(RuntimeException e)
         {
         	throw new DataRetrievalException(
-        			String.format("unable to query report %s with %s", sqlUsed, e));
+        			String.format("unable to query with sql: ", sqlUsed), e);
         }
     	return results.getRowset();
     }
@@ -280,7 +280,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	catch (RuntimeException e)
         {
         	throw new DataRetrievalException(
-        			String.format("unable to query report %s with %s", sqlUsed, e));
+        			String.format("unable to query with sql: ", sqlUsed), e);
         }
         return results.getRowset();
     }
@@ -391,14 +391,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 	 */
 	private String prepareSql(String sqlUsed, String tableHead, String colName, SortDirection direction)
 	{
-		if(tableHead != null)
-			tableHead = formatTableInfo(tableHead);
-		else
-			throw new NullPointerException("Table heading cannot be null.");
-		if(colName != null)
-			colName = formatTableInfo(colName);
-		else
-			throw new NullPointerException("Column name cannot be null.");
+		tableHead = formatTableInfo(tableHead);
+		colName = formatTableInfo(colName);
+		
 		if(sqlUsed != null)
 		{
 			sqlUsed = removeOrderBy(sqlUsed);

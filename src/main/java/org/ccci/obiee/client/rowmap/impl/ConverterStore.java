@@ -1,4 +1,4 @@
-package org.ccci.obiee.client.rowmap;
+package org.ccci.obiee.client.rowmap.impl;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;

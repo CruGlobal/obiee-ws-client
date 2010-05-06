@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import org.ccci.obiee.client.rowmap.SaiDonationRow.SaiDonationParameters;
+import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerFactoryImpl;
 import org.hamcrest.Matchers;
 import org.joda.time.LocalDate;
 import org.testng.annotations.AfterMethod;

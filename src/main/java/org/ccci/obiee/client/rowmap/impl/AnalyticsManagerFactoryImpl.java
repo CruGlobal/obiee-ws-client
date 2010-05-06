@@ -1,4 +1,7 @@
-package org.ccci.obiee.client.rowmap;
+package org.ccci.obiee.client.rowmap.impl;
+
+import org.ccci.obiee.client.rowmap.AnalyticsManager;
+import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
 
 import com.siebel.analytics.web.soap.v5.ReportEditingService;
 import com.siebel.analytics.web.soap.v5.ReportEditingServiceSoap;

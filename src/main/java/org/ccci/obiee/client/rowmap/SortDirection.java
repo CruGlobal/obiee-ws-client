@@ -1,5 +1,10 @@
 package org.ccci.obiee.client.rowmap;
 
+/**
+ * Indicates whether results ought to be sorted ascending or descending.
+ * 
+ * @author Matt Drees
+ */
 public enum SortDirection 
 {
 	ASCENDING("asc"), 

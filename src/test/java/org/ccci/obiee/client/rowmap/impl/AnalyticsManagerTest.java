@@ -1,4 +1,4 @@
-package org.ccci.obiee.client.rowmap;
+package org.ccci.obiee.client.rowmap.impl;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -12,6 +12,8 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerImpl;
+import org.ccci.obiee.client.rowmap.impl.ConverterStore;
 import org.ccci.obiee.rowmap.annotation.Column;
 import org.ccci.obiee.rowmap.annotation.ReportPath;
 import org.ccci.obiee.rowmap.annotation.Scale;

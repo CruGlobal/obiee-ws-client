@@ -1,4 +1,4 @@
-package org.ccci.obiee.client.rowmap;
+package org.ccci.obiee.client.rowmap.impl;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -22,6 +22,11 @@ import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import org.ccci.obiee.client.rowmap.AnalyticsManager;
+import org.ccci.obiee.client.rowmap.DataRetrievalException;
+import org.ccci.obiee.client.rowmap.Query;
+import org.ccci.obiee.client.rowmap.RowmapConfigurationException;
+import org.ccci.obiee.client.rowmap.SortDirection;
 import org.ccci.obiee.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.rowmap.annotation.ReportPath;
 import org.joda.time.DateTime;
@@ -43,7 +48,12 @@ import com.siebel.analytics.web.soap.v5.model.Variable;
 import com.siebel.analytics.web.soap.v5.model.XMLQueryExecutionOptions;
 import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
 
-
+/**
+ * 
+ * @author Matt Drees
+ * @author William Randall
+ *
+ */
 public class AnalyticsManagerImpl implements AnalyticsManager
 {
 

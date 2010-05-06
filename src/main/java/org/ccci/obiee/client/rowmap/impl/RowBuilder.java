@@ -1,4 +1,4 @@
-package org.ccci.obiee.client.rowmap;
+package org.ccci.obiee.client.rowmap.impl;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -8,6 +8,8 @@ import java.util.Map;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 
+import org.ccci.obiee.client.rowmap.DataRetrievalException;
+import org.ccci.obiee.client.rowmap.RowmapConfigurationException;
 import org.ccci.obiee.rowmap.annotation.Column;
 import org.w3c.dom.Node;
 

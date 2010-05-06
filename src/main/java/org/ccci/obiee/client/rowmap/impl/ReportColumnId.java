@@ -1,4 +1,4 @@
-package org.ccci.obiee.client.rowmap;
+package org.ccci.obiee.client.rowmap.impl;
 
 /**
  * A value object that represents a unique column within an Analytics report.

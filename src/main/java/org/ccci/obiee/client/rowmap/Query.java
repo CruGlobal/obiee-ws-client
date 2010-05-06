@@ -25,11 +25,10 @@ public interface Query<T>
     
     /**
      * Adds sort parameters to the query.  This is semantically equivalent to an SQL 'order by' clause.
-     * @param tableHead
-     * @param colName
+     * @param sortColumn
      * @return this Query instance to enable convenient method chaining
      */
-    public Query<T> orderBy(String tableHead, String colName, SortDirection direction);
+    public Query<T> orderBy(ReportColumn<T> sortColumn, SortDirection direction);
 
     /**
      * Executes the query and returns the returned row object. This should be invoked when exactly one row in the returned

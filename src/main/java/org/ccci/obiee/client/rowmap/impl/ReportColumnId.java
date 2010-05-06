@@ -1,5 +1,9 @@
 package org.ccci.obiee.client.rowmap.impl;
 
+import java.lang.reflect.Field;
+
+import org.ccci.obiee.rowmap.annotation.Column;
+
 /**
  * A value object that represents a unique column within an Analytics report.
  * 
@@ -10,7 +14,7 @@ class ReportColumnId
     public final String tableHeading;
     public final String columnHeading;
     
-    public ReportColumnId(String tableHeading, String columnHeading)
+    ReportColumnId(String tableHeading, String columnHeading)
     {
         this.tableHeading = tableHeading;
         this.columnHeading = columnHeading;
@@ -51,5 +55,46 @@ class ReportColumnId
     {
         return tableHeading + " : " + columnHeading;
     }
+    
+
+    static ReportColumnId buildColumnId(Field field)
+    {
+        Column column = field.getAnnotation(Column.class);
+        String tableHeading = column.tableHeading();
+        String columnHeading;
+        if (!column.columnHeading().equals(""))
+        {
+            columnHeading = column.columnHeading();
+        }
+        else
+        {
+            columnHeading = buildDefaultColumnHeadingFromFieldName(field.getName()); 
+        }
+        return new ReportColumnId(tableHeading, columnHeading);
+    }
+    
+    private static String buildDefaultColumnHeadingFromFieldName(String name)
+    {
+        StringBuilder defaultColumngHeading = new StringBuilder();
+        boolean first = true;
+        for (char character : name.toCharArray())
+        {
+            if (first) 
+            {
+                defaultColumngHeading.append(Character.toUpperCase(character));
+                first = false;
+            }
+            else
+            {
+                if (Character.isUpperCase(character))
+                {
+                    defaultColumngHeading.append(" ");
+                }
+                defaultColumngHeading.append(character);
+            }
+        }
+        return defaultColumngHeading.toString();
+    }
+
     
 }

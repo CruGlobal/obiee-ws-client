@@ -11,6 +11,7 @@ import org.joda.time.LocalDate;
 @ReportPath("/shared/CCCi/SSW/SAI Donations")
 public class SaiDonationRow
 {
+    public static ReportDefinition<SaiDonationRow> report = new ReportDefinition<SaiDonationRow>(SaiDonationRow.class);
 
 	public static class SaiDonationParameters
 	{

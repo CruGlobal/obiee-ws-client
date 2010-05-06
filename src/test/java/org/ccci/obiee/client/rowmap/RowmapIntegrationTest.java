@@ -49,7 +49,7 @@ public class RowmapIntegrationTest
     @Test(enabled = true)
     public void testRetrieveWithNoParameters() throws Exception
     {
-        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         List<SaiDonationRow> rows = query.getResultList();
         
         assertThat(rows, Matchers.hasSize(295));
@@ -71,7 +71,7 @@ public class RowmapIntegrationTest
     	SaiDonationParameters params = new SaiDonationParameters();
         params.designationNumber = "0478406";
         
-        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
         
@@ -93,7 +93,7 @@ public class RowmapIntegrationTest
     	SaiDonationParameters params = new SaiDonationParameters();
     	params.accountNumber = "000376764";
         
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
         
@@ -117,7 +117,7 @@ public class RowmapIntegrationTest
     	params.accountNumber = "000442787";
     	params.designationNumber = "0378570";
         
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
         
@@ -139,7 +139,7 @@ public class RowmapIntegrationTest
     	params.donationBegin = new LocalDate(2009, 12, 1);
     	params.donationEnd = new LocalDate(2009, 12, 31);
         
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
         
@@ -160,8 +160,8 @@ public class RowmapIntegrationTest
     public void testSortByAmount() throws Exception
     {
     	SortDirection direction = SortDirection.ASCENDING;
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
-    	query.orderBy("Transaction Item", "Amount", direction);
+    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+    	query.orderBy(SaiDonationRow.report.getColumn("amount"), direction);
     	List<SaiDonationRow> rows = query.getResultList();
     	
     	assertThat(rows, Matchers.hasSize(295));
@@ -181,8 +181,8 @@ public class RowmapIntegrationTest
     public void testSortByAmountDesc() throws Exception
     {
     	SortDirection direction = SortDirection.DESCENDING;
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
-    	query.orderBy("Transaction Item", "Amount", direction);
+    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+    	query.orderBy(SaiDonationRow.report.getColumn("amount"), direction);
     	List<SaiDonationRow> rows = query.getResultList();
     	
     	assertThat(rows, Matchers.hasSize(295));
@@ -202,8 +202,8 @@ public class RowmapIntegrationTest
     public void testSortByDate() throws Exception
     {
     	SortDirection direction = SortDirection.ASCENDING;
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
-    	query.orderBy("- Transaction Date", "Transaction Date", direction);
+    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+    	query.orderBy(SaiDonationRow.report.getColumn("transactionDate"), direction);
     	List<SaiDonationRow> rows = query.getResultList();
     	
     	assertThat(rows, Matchers.hasSize(295));
@@ -226,9 +226,9 @@ public class RowmapIntegrationTest
     	SaiDonationParameters params = new SaiDonationParameters();
         params.designationNumber = "0478406";
         
-        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.class);
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
-        query.orderBy("Transaction Item", "Amount", direction);
+        query.orderBy(SaiDonationRow.report.getColumn("amount"), direction);
     	List<SaiDonationRow> rows = query.getResultList();
     	
     	assertThat(rows, Matchers.hasSize(304));

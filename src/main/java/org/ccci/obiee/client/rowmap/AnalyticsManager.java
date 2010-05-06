@@ -17,11 +17,11 @@ public interface AnalyticsManager
     /**
      * Creates a {@link Query} object for executing queries against the Analytics system.
      * @param <T> the type of rows that will be returned
-     * @param rowType specifies the type of rows that will be returned, and is used to determine which report to query against
+     * @param reportDefinition specifies which OBIEE report to query against
      * @return the new {@code Query} instance
      * @throws RowmapConfigurationException if the given rowType is configured incorrectly
      */
-    <T> Query<T> createQuery(Class<T> rowType);
+    <T> Query<T> createQuery(ReportDefinition<T> reportDefinition);
     
     /**
      * Closes this manager

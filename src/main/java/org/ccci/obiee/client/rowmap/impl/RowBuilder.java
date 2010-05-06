@@ -31,7 +31,7 @@ class RowBuilder<T>
         {
             if (field.isAnnotationPresent(Column.class))
             {
-                ReportColumnId columnId = buildColumnId(field);
+                ReportColumnId columnId = ReportColumnId.buildColumnId(field);
                 if (columnToFieldMapping.containsKey(columnId))
                 {
                     throw new RowmapConfigurationException(String.format(
@@ -98,46 +98,6 @@ class RowBuilder<T>
                     rowType.getName(),
                     field.getName()));
         }
-    }
-
-    private ReportColumnId buildColumnId(Field field)
-    {
-        Column column = field.getAnnotation(Column.class);
-        String tableHeading = column.tableHeading();
-        String columnHeading;
-        if (!column.columnHeading().equals(""))
-        {
-            columnHeading = column.columnHeading();
-        }
-        else
-        {
-            columnHeading = buildDefaultColumnHeadingFromFieldName(field.getName()); 
-        }
-        ReportColumnId columnId = new ReportColumnId(tableHeading, columnHeading);
-        return columnId;
-    }
-    
-    private String buildDefaultColumnHeadingFromFieldName(String name)
-    {
-        StringBuilder defaultColumngHeading = new StringBuilder();
-        boolean first = true;
-        for (char character : name.toCharArray())
-        {
-            if (first) 
-            {
-                defaultColumngHeading.append(Character.toUpperCase(character));
-                first = false;
-            }
-            else
-            {
-                if (Character.isUpperCase(character))
-                {
-                    defaultColumngHeading.append(" ");
-                }
-                defaultColumngHeading.append(character);
-            }
-        }
-        return defaultColumngHeading.toString();
     }
 
     public T buildRowInstance(Node rowNode)

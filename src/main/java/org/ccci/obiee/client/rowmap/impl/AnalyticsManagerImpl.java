@@ -25,6 +25,8 @@ import javax.xml.xpath.XPathFactory;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.DataRetrievalException;
 import org.ccci.obiee.client.rowmap.Query;
+import org.ccci.obiee.client.rowmap.ReportColumn;
+import org.ccci.obiee.client.rowmap.ReportDefinition;
 import org.ccci.obiee.client.rowmap.RowmapConfigurationException;
 import org.ccci.obiee.client.rowmap.SortDirection;
 import org.ccci.obiee.rowmap.annotation.ReportParamVariable;
@@ -132,31 +134,25 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         if (closed) throw new IllegalStateException("already closed");
     }
     
-    public <T> Query<T> createQuery(Class<T> rowType)
+    public <T> Query<T> createQuery(ReportDefinition<T> reportDefinition)
     {
         checkOpen();
-        if (rowType == null)
+        if (reportDefinition == null)
             throw new NullPointerException("rowType is null");
-        if (!rowType.isAnnotationPresent(ReportPath.class))
-        {
-            throw new IllegalArgumentException(
-                rowType.getName() + " is not a valid OBIEE report row; it is not annotated @" + ReportPath.class.getSimpleName());
-        }
-        return new QueryImpl<T>(rowType);
+        return new QueryImpl<T>(reportDefinition);
     }
     
     class QueryImpl<T> implements Query<T>
     {
 
-        private final Class<T> rowType;
+        private final ReportDefinition<T> reportDefinition;
         private Object selection;
-        private String tableHead;
-        private String colName;
+        private ReportColumn<T> sortColumn;
         private SortDirection direction;
 
-        public QueryImpl(Class<T> rowType)
+        public QueryImpl(ReportDefinition<T> reportDefinition)
         {
-            this.rowType = rowType;
+            this.reportDefinition = reportDefinition;
         }
 
         public Query<T> withSelection(Object selection)
@@ -167,23 +163,27 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             return this;
         }
         
-        public Query<T> orderBy(String tableHead, String colName, SortDirection direction) 
+        public Query<T> orderBy(ReportColumn<T> sortColumn, SortDirection direction) 
         {
-			if(tableHead == null)
-				throw new NullPointerException("Table heading cannot be null.");
-			if(colName == null)
-				throw new NullPointerException("Column name cannot be null.");
-				
-			this.tableHead = tableHead;
-			this.colName = colName;
+			if (sortColumn == null)
+				throw new NullPointerException("sortColumn cannot be null.");
+			if (!reportDefinition.getColumns().contains(sortColumn))
+			{
+			    throw new IllegalArgumentException(String.format(
+			        "Sort column %s does not appear to be a column of report %s", 
+			        sortColumn, 
+			        reportDefinition.getName()
+		        ));
+			}
 			this.direction = direction;
+			this.sortColumn = sortColumn;
 			
 			return this;
 		}
 
         public List<T> getResultList()
         {
-        	return query(rowType, selection, tableHead, colName, direction);
+        	return query(reportDefinition.getRowType(), selection, sortColumn, direction);
         }
 
         public T getSingleResult()
@@ -198,35 +198,36 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
     }
     
-    private <T> List<T> query(Class<T> rowType, Object reportParams, String tableHead, String colName, SortDirection direction)
+    private <T> List<T> query(Class<T> rowType, Object selector, ReportColumn<T> sortColumn, SortDirection direction)
     {
     	checkOpen();
-    	
     	ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
-    	
-    	NodeList rows = null;
-        RowBuilder<T> rowBuilder = null;
-        Document doc = null;
-    	
-        if(tableHead != null && colName != null)
+
+    	RowBuilder<T> rowBuilder;
+    	NodeList rows;
+    	ReportParams params = buildReportParams(selector);
+        if(sortColumn != null)
         {
         	if(direction == null)
         	{
         		direction = SortDirection.ASCENDING;
         	}
-        	String sqlUsed = setupSqlForQuery(reportPathConfiguration, reportParams, tableHead, colName, direction);
-        	String metadata = sqlQueryForMetadata(sqlUsed, sessionId);
-	        doc = buildDocument(metadata);
-	        rowBuilder = buildRowBuilder(rowType, doc);
+        	String metadata = queryForMetadata(reportPathConfiguration, params);
+	        Document metadataDoc = buildDocument(metadata);
 	        
+            rowBuilder = buildRowBuilder(rowType, metadataDoc);
+	        String displayFormula = findSortDisplayFormula(sortColumn, metadataDoc);
+            
+            String sqlUsed = setupSqlForQuery(reportPathConfiguration, params, displayFormula, direction);
 	        String data = sqlQueryForData(sqlUsed, sessionId);
-	        Document docData = buildDocument(data);
-	        rows = getRows(docData);
+	        Document dataDocument = buildDocument(data);
+	        
+	        rows = getRows(dataDocument);
         }
         else
         {
-        	String rowset = queryForRowsetXml(reportPathConfiguration, reportParams);
-        	doc = buildDocument(rowset);
+        	String rowset = queryForMetadatAndData(reportPathConfiguration, selector);
+        	Document doc = buildDocument(rowset);
         	rowBuilder = buildRowBuilder(rowType, doc);
         	rows = getRows(doc);
         }
@@ -241,39 +242,137 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return results;
 	}
     
-    private String setupSqlForQuery(ReportPath reportPathConfiguration, Object reportParams, String tableHead, String colName, SortDirection direction)
+    private <T> String findSortDisplayFormula(ReportColumn<T> sortColumn, Document metadataDoc)
+    {
+        NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(metadataDoc);
+        
+        ReportColumnId sortColumnId = ReportColumnId.buildColumnId(sortColumn.getField());
+        
+        for (Node node : each(columnDefinitionXsdElements) )
+        {
+            ReportColumnId potentialColumnId = new ReportColumnId(
+                node.getAttributes().getNamedItem("saw-sql:tableHeading").getNodeValue(), 
+                node.getAttributes().getNamedItem("saw-sql:columnHeading").getNodeValue());
+            if (sortColumnId.equals(potentialColumnId))
+            {
+                return node.getAttributes().getNamedItem("saw-sql:displayFormula").getNodeValue();
+            }
+        }
+        throw new DataRetrievalException("metadata does not indicate such a sort column exists: " + sortColumnId);
+    }
+
+    private ReportParams buildReportParams(Object selector)
+    {
+        ReportParams params = new ReportParams();
+        if(selector != null)
+        {
+            Class<?> clazz = selector.getClass();
+            
+        	for(Field field: clazz.getDeclaredFields())
+        	{
+        		Object value = getValue(selector, field);
+        		ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
+                if(reportParamVar != null && value != null)
+        		{
+        			Variable var = createVariable(field, value, reportParamVar);
+        			params.getVariables().add(var);
+        		}
+        	}
+        }
+        return params;
+    }
+
+    private Variable createVariable(Field field, Object value, ReportParamVariable reportParamVar)
+    {
+        Class<?> fieldType = field.getType();
+        Variable var = new Variable();
+        if(reportParamVar.name().equals(""))
+        {
+        	var.setName(field.getName());
+        }
+        else
+        {
+        	var.setName(reportParamVar.name());
+        }
+        if(fieldType.equals(String.class))
+        {
+        	var.setValue(value.toString());
+        }
+        else if(fieldType.equals(LocalDate.class))
+        {
+        	LocalDate ld = (LocalDate)value;
+        	DateTime dTime = ld.toDateTimeAtCurrentTime();
+        	Date dt = dTime.toDate();
+        	var.setValue(dt);
+        }
+        else if(fieldType.equals(DateTime.class))
+        {
+        	DateTime dTime = (DateTime)value;
+        	Date dt = dTime.toDate();
+        	var.setValue(dt);
+        }
+        else
+        {
+        	throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
+        }
+        return var;
+    }
+
+    private Object getValue(Object reportParams, Field field) throws AssertionError
+    {
+        field.setAccessible(true);
+        Object value;
+        try
+        {
+            value = field.get(reportParams);
+        }
+        catch(IllegalAccessException e)
+        {
+            AssertionError assertionError = new AssertionError("We called field.setAccessible(true)");
+            assertionError.initCause(e);
+            throw assertionError;
+        }
+        return value;
+    }
+    
+    private String setupSqlForQuery(ReportPath reportPathConfiguration, ReportParams params, String sortFormula, SortDirection direction)
     {
     	ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
         
-        ReportParams params = new ReportParams();
-        
-        if(reportParams != null)
-        {
-        	buildReportParams(reportParams, params);
-        }
-        
         String sqlUsed = reportEditingService.generateReportSQL(report, params, sessionId);
         
-        return prepareSql(sqlUsed, tableHead, colName, direction);
+        return prepareSql(sqlUsed, sortFormula, direction);
     }
     
-    private String sqlQueryForMetadata(String sqlUsed, String sessionId)
+    private String queryForMetadata(ReportPath reportPathConfiguration, ReportParams reportParams)
     {
     	XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA;
         XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
         executionOptions.setMaxRowsPerPage(-1);
         executionOptions.setPresentationInfo(true);
         
+        ReportRef report = new ReportRef();
+        report.setReportPath(reportPathConfiguration.value());
+
         QueryResults results;
         try
         {
-        	results = xmlViewService.executeSQLQuery(sqlUsed, outputFormat, executionOptions, sessionId);
+        	results = xmlViewService.executeXMLQuery(
+        	    report, 
+        	    outputFormat, 
+        	    executionOptions, 
+        	    reportParams, 
+        	    sessionId);
         }
         catch(RuntimeException e)
         {
-        	throw new DataRetrievalException(
-        			String.format("unable to query with sql: ", sqlUsed), e);
+            throw new DataRetrievalException(
+                String.format(
+                    "unable to query metadata for report %s with %s", 
+                    reportPathConfiguration.value(),
+                    formatParamsAsString(reportParams)), 
+                e);
         }
     	return results.getRowset();
     }
@@ -295,7 +394,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return results.getRowset();
     }
     
-    private String queryForRowsetXml(ReportPath reportPathConfiguration, Object reportParams)
+    private String queryForMetadatAndData(ReportPath reportPathConfiguration, Object reportParams)
     {
         ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
@@ -305,12 +404,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         executionOptions.setMaxRowsPerPage(-1);
         executionOptions.setPresentationInfo(true);
         
-        ReportParams params = new ReportParams();
-        
-        if(reportParams != null)
-        {
-        	buildReportParams(reportParams, params);
-        }
+        ReportParams params = buildReportParams(reportParams);
         
         QueryResults queryResults;
         try
@@ -335,63 +429,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return queryResults.getRowset();
     }
 
-	private void buildReportParams(Object reportParams, ReportParams params) 
-	{
-		Variable var;
-		Class<?> clazz = reportParams.getClass();
-		
-		try
-		{
-			for(Field field: clazz.getDeclaredFields())
-			{
-				field.setAccessible(true);
-				ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
-				if(reportParamVar != null && field.get(reportParams) != null)
-				{
-					Class<?> fieldType = field.getType();
-					var = new Variable();
-					if(reportParamVar.name().equals(""))
-					{
-						var.setName(field.getName());
-					}
-					else
-					{
-						var.setName(reportParamVar.name());
-					}
-					if(fieldType.equals(String.class))
-					{
-						var.setValue(field.get(reportParams).toString());
-					}
-					else if(fieldType.equals(LocalDate.class))
-					{
-						LocalDate ld = (LocalDate)field.get(reportParams);
-						DateTime dTime = ld.toDateTimeAtCurrentTime();
-						Date dt = dTime.toDate();
-						var.setValue(dt);
-					}
-					else if(fieldType.equals(DateTime.class))
-					{
-						DateTime dTime = (DateTime)field.get(reportParams);
-						Date dt = dTime.toDate();
-						var.setValue(dt);
-					}
-					else
-					{
-						throw new RowmapConfigurationException("Unexpected data type passed in - type: " + field.getType());
-					}
-					params.getVariables().add(var);
-				}
-			}
-		}
-		catch(IllegalAccessException e)
-		{
-			AssertionError assertionError = new AssertionError("We called field.setAccessible(true)");
-			assertionError.initCause(e);
-			throw assertionError;
-		}
-		
-	}
-	
 	/**
 	 * Formats the SQL statement to be used for sorting.
 	 * @param sqlUsed
@@ -399,38 +436,38 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 	 * @param colName
 	 * @return
 	 */
-	private String prepareSql(String sqlUsed, String tableHead, String colName, SortDirection direction)
+	private String prepareSql(String sqlUsed, String sortFormula, SortDirection direction)
 	{
-		tableHead = formatTableInfo(tableHead);
-		colName = formatTableInfo(colName);
+//		tableHead = formatTableInfo(tableHead);
+//		colName = formatTableInfo(colName);
 		
 		if(sqlUsed != null)
 		{
 			sqlUsed = removeOrderBy(sqlUsed);
-			sqlUsed = sqlUsed.concat(" ORDER BY " + tableHead + "." + colName + " " + direction.toCode());
+			sqlUsed = sqlUsed.concat(" ORDER BY " + sortFormula + " " + direction.toCode());
 		}
 		return sqlUsed;
 	}
 	
-	/**
-	 * Formats the string passed to it in case of two word strings.
-	 * @param tableInfo (column name or table heading)
-	 * @return
-	 */
-	private String formatTableInfo(String tableInfo)
-	{
-		if(isOneWord(tableInfo))
-		{
-			return tableInfo;
-		}
-		
-		return "\"" + tableInfo + "\"";
-	}
-	
-	private boolean isOneWord(String tableInfo)
-	{
-		return tableInfo.contains(" ")?false:true;
-	}
+//	/**
+//	 * Formats the string passed to it in case of two word strings.
+//	 * @param tableInfo (column name or table heading)
+//	 * @return
+//	 */
+//	private String formatTableInfo(String tableInfo)
+//	{
+//		if(isOneWord(tableInfo))
+//		{
+//			return tableInfo;
+//		}
+//		
+//		return "\"" + tableInfo + "\"";
+//	}
+//	
+//	private boolean isOneWord(String tableInfo)
+//	{
+//		return tableInfo.contains(" ")?false:true;
+//	}
 	
 	private String removeOrderBy(String sqlUsed)
 	{
@@ -463,7 +500,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     {
         NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(doc);
         
-        Map<ReportColumnId, XPathExpression> columnValueExpressionms = new HashMap<ReportColumnId, XPathExpression>();
+        Map<ReportColumnId, XPathExpression> columnValueExpressions = new HashMap<ReportColumnId, XPathExpression>();
         
         for (Node node : each(columnDefinitionXsdElements) )
         {
@@ -483,9 +520,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 throw new RuntimeException(e);
             }
             
-            columnValueExpressionms.put(new ReportColumnId(tableHeading, columnHeading), columnValueExpression);
+            columnValueExpressions.put(new ReportColumnId(tableHeading, columnHeading), columnValueExpression);
         }
-        return new RowBuilder<T>(columnValueExpressionms, rowType, converterStore);
+        return new RowBuilder<T>(columnValueExpressions, rowType, converterStore);
     }
     
 

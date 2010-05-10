@@ -20,9 +20,9 @@ public class SaiDonationRow
 		@ReportParamVariable
 		public String accountNumber;
 		@ReportParamVariable
-		public LocalDate donationBegin;
+		public LocalDate donationRangeBegin;
 		@ReportParamVariable
-		public LocalDate donationEnd;
+		public LocalDate donationRangeEnd;
 	}
 	
     @Column(tableHeading = "Designation")

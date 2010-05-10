@@ -18,7 +18,7 @@ public interface Query<T>
      * Restricts the results to be returned.  This is semantically equivalent to an SQL 'where' clause.
      * 
      * @param selection should contain a set of fields each annotated {@link ReportParamVariable}, and these fields will
-     *            be used in filter clauses.
+     *            be used in filter clauses.  If there are no fields with this annotation, an exception will be thrown.
      * @return this Query instance to enable convenient method chaining
      */
     public Query<T> withSelection(Object selection);

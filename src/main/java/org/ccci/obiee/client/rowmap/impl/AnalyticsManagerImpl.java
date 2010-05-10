@@ -159,6 +159,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             if (selection == null) 
                 throw new NullPointerException("selection is null");
+            if(!annotatedFieldsExist(selection))
+            	throw new RowmapConfigurationException("You forgot to annotate the filter variables");
             this.selection = selection;
             return this;
         }
@@ -196,6 +198,20 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 throw new DataRetrievalException("More than one row was returned");
             return resultList.get(0);
         }
+        
+        private boolean annotatedFieldsExist(Object selection)
+        {
+        	Class<?> clazz = selection.getClass();
+            
+        	for(Field field: clazz.getDeclaredFields())
+        	{
+                if(field.getAnnotation(ReportParamVariable.class) != null)
+        		{
+                	return true;
+        		}
+        	}
+        	return false;
+        }
     }
     
     private <T> List<T> query(Class<T> rowType, Object selector, ReportColumn<T> sortColumn, SortDirection direction)
@@ -212,11 +228,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         	{
         		direction = SortDirection.ASCENDING;
         	}
+        	
         	String metadata = queryForMetadata(reportPathConfiguration, params);
 	        Document metadataDoc = buildDocument(metadata);
 	        
             rowBuilder = buildRowBuilder(rowType, metadataDoc);
-	        String displayFormula = findSortDisplayFormula(sortColumn, metadataDoc);
+            String displayFormula = findSortDisplayFormula(sortColumn, metadataDoc);
             
             String sqlUsed = setupSqlForQuery(reportPathConfiguration, params, displayFormula, direction);
 	        String data = sqlQueryForData(sqlUsed, sessionId);
@@ -226,7 +243,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         else
         {
-        	String rowset = queryForMetadatAndData(reportPathConfiguration, selector);
+        	String rowset = queryForMetadataAndData(reportPathConfiguration, selector);
         	Document doc = buildDocument(rowset);
         	rowBuilder = buildRowBuilder(rowType, doc);
         	rows = getRows(doc);
@@ -394,7 +411,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return results.getRowset();
     }
     
-    private String queryForMetadatAndData(ReportPath reportPathConfiguration, Object reportParams)
+    private String queryForMetadataAndData(ReportPath reportPathConfiguration, Object reportParams)
     {
         ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
@@ -438,9 +455,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 	 */
 	private String prepareSql(String sqlUsed, String sortFormula, SortDirection direction)
 	{
-//		tableHead = formatTableInfo(tableHead);
-//		colName = formatTableInfo(colName);
-		
 		if(sqlUsed != null)
 		{
 			sqlUsed = removeOrderBy(sqlUsed);
@@ -448,26 +462,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 		}
 		return sqlUsed;
 	}
-	
-//	/**
-//	 * Formats the string passed to it in case of two word strings.
-//	 * @param tableInfo (column name or table heading)
-//	 * @return
-//	 */
-//	private String formatTableInfo(String tableInfo)
-//	{
-//		if(isOneWord(tableInfo))
-//		{
-//			return tableInfo;
-//		}
-//		
-//		return "\"" + tableInfo + "\"";
-//	}
-//	
-//	private boolean isOneWord(String tableInfo)
-//	{
-//		return tableInfo.contains(" ")?false:true;
-//	}
 	
 	private String removeOrderBy(String sqlUsed)
 	{

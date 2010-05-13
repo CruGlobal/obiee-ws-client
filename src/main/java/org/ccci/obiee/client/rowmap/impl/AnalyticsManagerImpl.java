@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import javax.xml.XMLConstants;
 import javax.xml.namespace.NamespaceContext;
@@ -327,6 +328,24 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         	DateTime dTime = (DateTime)value;
         	Date dt = dTime.toDate();
         	var.setValue(dt);
+        }
+        else if(fieldType.equals(Set.class))
+        {
+        	String stringValue = "";
+        	
+        	try
+        	{
+        		for(String s: (Set<String>)value)
+            	{
+            		stringValue = stringValue + "'" + s + "',";
+            	}
+            	stringValue = stringValue.substring(0,stringValue.length() - 1);
+            	var.setValue(stringValue);
+        	}
+        	catch(RuntimeException e)
+        	{
+        		throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
+        	}
         }
         else
         {

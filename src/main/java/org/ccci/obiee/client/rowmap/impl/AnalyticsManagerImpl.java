@@ -34,6 +34,7 @@ import org.ccci.obiee.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.rowmap.annotation.ReportPath;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
+import org.joda.time.LocalTime;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -319,7 +320,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         else if(fieldType.equals(LocalDate.class))
         {
         	LocalDate ld = (LocalDate)value;
-        	DateTime dTime = ld.toDateTimeAtCurrentTime();
+        	DateTime dTime = ld.toDateTime(new LocalTime(1,0,0,0));
         	Date dt = dTime.toDate();
         	var.setValue(dt);
         }

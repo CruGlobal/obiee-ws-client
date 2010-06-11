@@ -12,8 +12,9 @@ import org.ccci.obiee.rowmap.annotation.ReportPath;
 /**
  * Encapsulates a row type with validation logic and methods to retrieve {@link ReportColumn}s.
  * 
+ * @param <T> the row type
+ * 
  * @author Matt Drees
- * @param <T>
  */
 public class ReportDefinition<T>
 {

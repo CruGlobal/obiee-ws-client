@@ -23,10 +23,12 @@ public class RowmapIntegrationTest
 {
     private static final String USERNAME = "***";
     private static final String PASSWORD = "***";
+    static final boolean validUsernamePassword = false;
+
 
     AnalyticsManagerFactory factory;
     AnalyticsManager manager;
-
+    
     @BeforeClass
     public void setupFactory()
     {
@@ -46,7 +48,7 @@ public class RowmapIntegrationTest
     }
     
 
-    @Test(enabled = true)
+    @Test(enabled = validUsernamePassword)
     public void testRetrieveWithNoParameters() throws Exception
     {
         Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
@@ -65,7 +67,7 @@ public class RowmapIntegrationTest
         assertThat(first.getTransactionNumber(), is("1F7Z500-000376764"));
     }
     
-    @Test(enabled = true)
+    @Test(enabled = validUsernamePassword)
     public void testRetrieveWithDesignationParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -87,7 +89,7 @@ public class RowmapIntegrationTest
         assertThat(first.getTransactionNumber(), is("R092530-000105923"));
     }
     
-    @Test(enabled = false)
+    @Test(enabled = validUsernamePassword)
     public void testRetrieveWithAccountNumberParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -110,7 +112,7 @@ public class RowmapIntegrationTest
         assertThat(first.getTransactionNumber(), is("1F7Z500-000376764"));
     }
     
-    @Test(enabled = false)
+    @Test(enabled = validUsernamePassword)
     public void testRetrieveWithAccountNumberAndDesignationParameters() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -132,7 +134,7 @@ public class RowmapIntegrationTest
         assertThat(first.getTransactionNumber(), is("R090265-000442787"));
     }
     
-    @Test(enabled = true)
+    @Test(enabled = validUsernamePassword)
     public void testRetrieveWithDateParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -198,7 +200,7 @@ public class RowmapIntegrationTest
         assertThat(first.getTransactionNumber(), is("4H8K207-437153485"));
     }
     
-    @Test(enabled = true)
+    @Test(enabled = validUsernamePassword)
     public void testSortByDate() throws Exception
     {
     	SortDirection direction = SortDirection.ASCENDING;

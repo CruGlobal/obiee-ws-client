@@ -140,7 +140,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     {
         checkOpen();
         if (reportDefinition == null)
-            throw new NullPointerException("rowType is null");
+            throw new NullPointerException("reportDefinition is null");
         return new QueryImpl<T>(reportDefinition);
     }
     

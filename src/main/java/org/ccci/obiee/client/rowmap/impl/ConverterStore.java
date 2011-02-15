@@ -5,7 +5,8 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.ccci.obiee.rowmap.annotation.Scale;
+import org.ccci.obiee.client.rowmap.Converter;
+import org.ccci.obiee.client.rowmap.annotation.Scale;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.joda.time.format.DateTimeFormatter;
@@ -37,7 +38,19 @@ public class ConverterStore
     {
         converters.put(fieldType, converter);
     }
+    
 
+    /**
+     * Returns a copy of this converter store, with the addition of the given converters
+     */
+    public ConverterStore copyAndAdd(ConverterStore additionalConverters)
+    {
+        ConverterStore copy = new ConverterStore();
+        copy.converters.putAll(this.converters);
+        copy.converters.putAll(additionalConverters.converters);
+        return copy;
+    }
+    
     public static ConverterStore buildDefault()
     {
         ConverterStore converterStore = new ConverterStore();
@@ -131,4 +144,5 @@ public class ConverterStore
     {
         return string == null || string.length() == 0;
     }
+
 }

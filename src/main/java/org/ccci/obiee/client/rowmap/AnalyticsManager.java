@@ -28,4 +28,10 @@ public interface AnalyticsManager
      */
     void close();
 
+    /**
+     * Validates that this manager is still usable, and throws an exception if not.
+     * @throws IllegalStateException if this manager is no longer usable
+     */
+    void validate();
+
 }

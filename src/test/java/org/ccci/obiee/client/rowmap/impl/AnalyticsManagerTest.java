@@ -12,11 +12,10 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerImpl;
-import org.ccci.obiee.client.rowmap.impl.ConverterStore;
-import org.ccci.obiee.rowmap.annotation.Column;
-import org.ccci.obiee.rowmap.annotation.ReportPath;
-import org.ccci.obiee.rowmap.annotation.Scale;
+import org.ccci.obiee.client.rowmap.ReportDefinition;
+import org.ccci.obiee.client.rowmap.annotation.Column;
+import org.ccci.obiee.client.rowmap.annotation.ReportPath;
+import org.ccci.obiee.client.rowmap.annotation.Scale;
 import org.joda.time.LocalDate;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -32,17 +31,18 @@ public class AnalyticsManagerTest
     @BeforeMethod
     public void createManager()
     {
-        manager = new AnalyticsManagerImpl(null, null, null, null, ConverterStore.buildDefault());
+        manager = new AnalyticsManagerImpl(null, null, null, ConverterStore.buildDefault());
     }
     
     
     @Test
     public void testBuildRowBuilder() throws Exception
     {
-        Class<TestRow> rowType = TestRow.class;
         Document doc = readSimpleRowset();
         
-        RowBuilder<TestRow> rowBuilder = manager.buildRowBuilder(rowType, doc);
+        RowBuilder<TestRow> rowBuilder = manager
+            .createQuery(TestRow.definition)
+            .buildRowBuilder(doc);
         assertThat(rowBuilder, is(notNullValue()));
     }
     
@@ -74,6 +74,7 @@ public class AnalyticsManagerTest
     @ReportPath("/not/real")
     public static class TestRow
     {
+        public static ReportDefinition<TestRow> definition = new ReportDefinition<TestRow>(TestRow.class); 
 
         @Column(tableHeading = "Designation")
         private String designationNumber;

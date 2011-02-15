@@ -2,7 +2,7 @@ package org.ccci.obiee.client.rowmap.impl;
 
 import java.lang.reflect.Field;
 
-import org.ccci.obiee.rowmap.annotation.Column;
+import org.ccci.obiee.client.rowmap.annotation.Column;
 
 /**
  * A value object that represents a unique column within an Analytics report.

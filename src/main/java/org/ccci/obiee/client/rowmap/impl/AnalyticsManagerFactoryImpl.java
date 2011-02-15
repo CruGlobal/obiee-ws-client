@@ -42,30 +42,30 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
     public AnalyticsManager createAnalyticsManager()
     {
         SAWSessionServiceSoap sawSessionServiceSoap = sawSessionService.getSAWSessionServiceSoap();
-        setTimeouts(sawSessionServiceSoap);
+        configurePort(sawSessionServiceSoap);
         
         XmlViewServiceSoap xmlViewServiceSoap = xmlViewService.getXmlViewServiceSoap();
-        setTimeouts(xmlViewServiceSoap);
+        configurePort(xmlViewServiceSoap);
         
         ReportEditingServiceSoap reportEditingServiceSoap = reportEditingService.getReportEditingServiceSoap();
-        setTimeouts(reportEditingServiceSoap);
+        configurePort(reportEditingServiceSoap);
         
-        String sessionId = sawSessionServiceSoap.logon(username, password);
+        sawSessionServiceSoap.logon(username, password);
         
         ConverterStore converterStore = ConverterStore.buildDefault();
         return new AnalyticsManagerImpl(
-            sessionId, 
             sawSessionServiceSoap, 
             xmlViewServiceSoap, 
             reportEditingServiceSoap, 
             converterStore);
     }
 
-    private void setTimeouts(Object port)
+    private void configurePort(Object port)
     {
         BindingProvider bindingProvider = (BindingProvider) port;
         bindingProvider.getRequestContext().put(BindingProviderProperties.CONNECT_TIMEOUT, connectTimeout);
         bindingProvider.getRequestContext().put(BindingProviderProperties.REQUEST_TIMEOUT, readTimeout);
+        bindingProvider.getRequestContext().put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
     }
 
 

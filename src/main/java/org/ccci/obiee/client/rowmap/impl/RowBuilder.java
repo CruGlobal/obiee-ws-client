@@ -8,9 +8,10 @@ import java.util.Map;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 
+import org.ccci.obiee.client.rowmap.Converter;
 import org.ccci.obiee.client.rowmap.DataRetrievalException;
 import org.ccci.obiee.client.rowmap.RowmapConfigurationException;
-import org.ccci.obiee.rowmap.annotation.Column;
+import org.ccci.obiee.client.rowmap.annotation.Column;
 import org.w3c.dom.Node;
 
 class RowBuilder<T>

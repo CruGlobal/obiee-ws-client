@@ -16,9 +16,9 @@ import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
 public class GhostTest
 {
 
-    final static String TEST_USER = "***";
-    final static String TEST_PASSWORD= "***";
-    final static boolean credentialsAreReal = false;
+    final static String TEST_USER = "INTF_SSW";
+    final static String TEST_PASSWORD= "INTF_SSW";
+    final static boolean credentialsAreReal = true;
     
     @Test(enabled = credentialsAreReal)
     public void testLogonLogoff()

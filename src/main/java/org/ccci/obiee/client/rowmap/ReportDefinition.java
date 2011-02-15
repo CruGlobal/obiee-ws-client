@@ -6,8 +6,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.ccci.obiee.rowmap.annotation.Column;
-import org.ccci.obiee.rowmap.annotation.ReportPath;
+import org.ccci.obiee.client.rowmap.annotation.Column;
+import org.ccci.obiee.client.rowmap.annotation.ReportPath;
+import org.ccci.obiee.client.rowmap.impl.ConverterStore;
+import org.ccci.obiee.client.rowmap.impl.EnumConverter;
 
 /**
  * Encapsulates a row type with validation logic and methods to retrieve {@link ReportColumn}s.
@@ -23,12 +25,56 @@ public class ReportDefinition<T>
 
     private final Map<String, ReportColumn<T>> columns;
     
+    private final ConverterStore converters;
+    
     public ReportDefinition(Class<T> rowType)
     {
         validate(rowType);
         columns = buildColumns(rowType);
         this.rowType = rowType;
+        this.converters = buildConverters(rowType);
     }
+
+    private ConverterStore buildConverters(Class<T> rowType)
+    {
+        ConverterStore store = new ConverterStore();
+        //TODO: search superclasses for enum fields, as well
+        for (Field field : rowType.getDeclaredFields())
+        {
+            Class<?> type = field.getType();
+            
+            if (Enum.class.isAssignableFrom(type))
+            {
+                addConverterForEnumType(type, store);
+            }
+        }
+        return store;
+    }
+
+    /* I've been fiddling with the java type system for a while and I haven't come up with a clean way
+     * to do this (i.e., a way without a couple different @SupressWarnings annotations)
+     */
+    private void addConverterForEnumType(Class<?> type, ConverterStore store)
+    {
+        @SuppressWarnings("rawtypes") //"Enum" is raw, but I don't think there's a way around this.  
+        Class<? extends Enum> asEnumType = type.asSubclass(Enum.class);
+        
+        addEnumConverterRaw(store, asEnumType);
+    }
+
+    @SuppressWarnings("unchecked") //we are calling a method expecting <U extends Enum<U>>, and we know 
+      // that any subclass U of Enum is a Enum<U>, but compiler doesn't know this.  Also, we have to suppress
+      // this warning at the method level, since we cannot annotate method invocations.
+    private void addEnumConverterRaw(ConverterStore store, @SuppressWarnings("rawtypes") Class<? extends Enum> asEnumType)
+    {
+        addEnumConverter(asEnumType, store);
+    }
+    
+    private <U extends Enum<U>> void addEnumConverter(Class<U> asEnumType, ConverterStore store)
+    {
+        store.addConverter(asEnumType, new EnumConverter<U>(asEnumType));
+    }
+
 
     private void validate(Class<T> rowType)
     {
@@ -83,4 +129,10 @@ public class ReportDefinition<T>
         return rowType;
     }
 
+
+    public ConverterStore getConverterStore()
+    {
+        return converters;
+    }
+    
 }

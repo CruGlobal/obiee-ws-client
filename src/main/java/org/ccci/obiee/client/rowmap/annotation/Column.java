@@ -1,4 +1,4 @@
-package org.ccci.obiee.rowmap.annotation;
+package org.ccci.obiee.client.rowmap.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

@@ -2,7 +2,7 @@ package org.ccci.obiee.client.rowmap;
 
 import java.util.List;
 
-import org.ccci.obiee.rowmap.annotation.ReportParamVariable;
+import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
 
 /**
  * Used to build and execute queries against the OBIEE Answers system.

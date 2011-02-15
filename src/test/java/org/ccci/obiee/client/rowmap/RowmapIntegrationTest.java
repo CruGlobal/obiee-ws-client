@@ -1,4 +1,4 @@
-package org.ccci.obiee.client.rowmap;
+    package org.ccci.obiee.client.rowmap;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -21,8 +21,8 @@ import com.siebel.analytics.web.soap.v5.XmlViewService;
 
 public class RowmapIntegrationTest
 {
-    private static final String USERNAME = "***";
-    private static final String PASSWORD = "***";
+    private static final String USERNAME = "INTF_SSW";
+    private static final String PASSWORD = "INTF_SSW";
     static final boolean validUsernamePassword = false;
 
 

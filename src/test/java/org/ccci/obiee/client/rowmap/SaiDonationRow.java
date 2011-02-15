@@ -2,10 +2,10 @@ package org.ccci.obiee.client.rowmap;
 
 import java.math.BigDecimal;
 
-import org.ccci.obiee.rowmap.annotation.Column;
-import org.ccci.obiee.rowmap.annotation.ReportParamVariable;
-import org.ccci.obiee.rowmap.annotation.ReportPath;
-import org.ccci.obiee.rowmap.annotation.Scale;
+import org.ccci.obiee.client.rowmap.annotation.Column;
+import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
+import org.ccci.obiee.client.rowmap.annotation.ReportPath;
+import org.ccci.obiee.client.rowmap.annotation.Scale;
 import org.joda.time.LocalDate;
 
 @ReportPath("/shared/CCCi/SSW/SAI Donations")

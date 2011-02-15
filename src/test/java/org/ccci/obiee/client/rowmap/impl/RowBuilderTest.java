@@ -15,12 +15,9 @@ import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
-import org.ccci.obiee.client.rowmap.impl.ConverterStore;
-import org.ccci.obiee.client.rowmap.impl.ReportColumnId;
-import org.ccci.obiee.client.rowmap.impl.RowBuilder;
+import org.ccci.obiee.client.rowmap.annotation.Column;
+import org.ccci.obiee.client.rowmap.annotation.ReportPath;
 import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerImpl.RowsetNamespaceContext;
-import org.ccci.obiee.rowmap.annotation.Column;
-import org.ccci.obiee.rowmap.annotation.ReportPath;
 import org.testng.annotations.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;

@@ -221,5 +221,12 @@
   <!-- 
     <http.nonProxyHosts>hart-*|harta*|*.ccci.org</http.nonProxyHosts>
    -->
+   
+    <!-- This is to address a maven 3 / bamboo (< 2.6) problem: http://jira.atlassian.com/browse/BAM-4887
+      We work around this by manually printing the token Bamboo is looking for in a successful build.  The
+      build should be configured to run the standard maven goals and then the help:evaluate goal; e.g.
+      mvn help:evaluate -Dexpression='atlassian.bamboo.builder.successMarker'
+        -->
+    <atlassian.bamboo.builder.successMarker>BUILD SUCCESSFUL</atlassian.bamboo.builder.successMarker>
   </properties>
 </project>

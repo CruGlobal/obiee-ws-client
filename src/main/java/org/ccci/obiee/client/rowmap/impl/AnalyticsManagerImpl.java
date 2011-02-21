@@ -63,18 +63,17 @@ import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
 public class AnalyticsManagerImpl implements AnalyticsManager
 {
 
-//    /*
-//     * Note that the Answers webservice doesn't need us to pass a sessionId if our jax-ws client stores and 
-//     * sends cookies.  We opted to just track the sessionId ourselves, since it was relatively simply and
-//     * we didn't bother to learn about hwat it takes to maintain jax-ws track cookies.
-//     * It can be done, but takes some config:
-//     * http://weblogs.java.net/blog/ramapulavarthi/archive/2006/06/maintaining_ses.html
-//     */
-    
-    /*
-     * We don't need to maintain a sessionId manually, we have configured the jax-ws clients to maintain session state
+    /**
+     * The Answers web service doesn't require you to send the sessionId on every request as long
+     * as your web service client maintains cookies.  The jax-ws client can be configured to do this
+     * (see http://weblogs.java.net/blog/ramapulavarthi/archive/2006/06/maintaining_ses.html),
+     * however, this does not work for us.
+     * I believe in this case the cookies are not shared between different service implementations. 
+     * That is, cookies received by the sawSessionService aren't propagated to the xmlViewService,
+     * for example.
+     * So, we have to maintain the sessionId instead of using cookies.
      */
-    private final String sessionId = null;
+    private final String sessionId;
     private final SAWSessionServiceSoap sawSessionService;
     private final XmlViewServiceSoap xmlViewService;
     private final XPathFactory xpathFactory;
@@ -88,17 +87,18 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     /**
      * Assumes that the caller has logged us in to OBIEE already.  
-     * 
-     * @param sessionId used for logout
+     * @param sessionId used to maintain session for various calls
      * @param sawSessionService used for logout
      * @param xmlViewService used for retrieving report queries
      * @param converterStore
      */
-    public AnalyticsManagerImpl(SAWSessionServiceSoap sawSessionService,
+    public AnalyticsManagerImpl(String sessionId, 
+                                SAWSessionServiceSoap sawSessionService,
                                 XmlViewServiceSoap xmlViewService,
                                 ReportEditingServiceSoap reportEditingService,
                                 ConverterStore converterStore)
     {
+        this.sessionId = sessionId;
         this.sawSessionService = sawSessionService;
         this.xmlViewService = xmlViewService;
         this.reportEditingService = reportEditingService;
@@ -219,7 +219,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 String displayFormula = findSortDisplayFormula(sortColumn, metadataDoc);
                 
                 String sqlUsed = setupSqlForQuery(reportPathConfiguration, params, displayFormula, direction);
-                String data = sqlQueryForData(sqlUsed, sessionId);
+                String data = sqlQueryForData(sqlUsed);
                 Document dataDocument = buildDocument(data);
                 
                 rows = getRows(dataDocument);
@@ -459,7 +459,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	return results.getRowset();
     }
     
-    private String sqlQueryForData(String sqlUsed, String sessionId)
+    private String sqlQueryForData(String sqlUsed)
     {
     	XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
       

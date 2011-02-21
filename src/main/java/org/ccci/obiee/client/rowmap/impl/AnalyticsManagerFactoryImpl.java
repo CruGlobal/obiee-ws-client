@@ -50,10 +50,11 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         ReportEditingServiceSoap reportEditingServiceSoap = reportEditingService.getReportEditingServiceSoap();
         configurePort(reportEditingServiceSoap);
         
-        sawSessionServiceSoap.logon(username, password);
+        String sessionId = sawSessionServiceSoap.logon(username, password);
         
         ConverterStore converterStore = ConverterStore.buildDefault();
         return new AnalyticsManagerImpl(
+            sessionId,
             sawSessionServiceSoap, 
             xmlViewServiceSoap, 
             reportEditingServiceSoap, 

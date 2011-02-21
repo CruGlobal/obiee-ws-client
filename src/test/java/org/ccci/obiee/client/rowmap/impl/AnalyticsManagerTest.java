@@ -31,7 +31,7 @@ public class AnalyticsManagerTest
     @BeforeMethod
     public void createManager()
     {
-        manager = new AnalyticsManagerImpl(null, null, null, ConverterStore.buildDefault());
+        manager = new AnalyticsManagerImpl(null, null, null, null, ConverterStore.buildDefault());
     }
     
     

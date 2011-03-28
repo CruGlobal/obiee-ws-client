@@ -23,7 +23,7 @@ public class RowmapIntegrationTest
 {
     private static final String USERNAME = "INTF_SSW";
     private static final String PASSWORD = "INTF_SSW";
-    static final boolean validUsernamePassword = true;
+    static final boolean validUsernamePassword = false;
 
 
     AnalyticsManagerFactory factory;

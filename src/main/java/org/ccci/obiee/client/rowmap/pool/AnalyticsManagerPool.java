@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.pool.PoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
+import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
 
@@ -13,6 +14,7 @@ public class AnalyticsManagerPool
 {
     
     private final GenericObjectPool pool;
+    private Logger log = Logger.getLogger(this.getClass());
     
     public AnalyticsManagerPool(AnalyticsManagerFactory analyticsManagerFactory)
     {
@@ -52,6 +54,17 @@ public class AnalyticsManagerPool
         }
     }
     
+    public void shutdown()
+    {
+        try
+        {
+            pool.close();
+        }
+        catch (Exception e)
+        {
+            log.warn("exception shutting down analytics manager pool; ignoring", e);
+        }
+    }
     
     public static class AnalyticsManagerObjectFactory implements PoolableObjectFactory
     {

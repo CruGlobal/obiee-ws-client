@@ -3,31 +3,24 @@
   <groupId>org.ccci</groupId>
   <artifactId>obiee-ws-client</artifactId>
   <name>OBIEE Web Service Client</name>
-  <version>1.0-SNAPSHOT</version>
+  <version>1-SNAPSHOT</version>
   <description>A client library generated from the wsdl of CCCI's OBIEE instance </description>
   
   <parent>
     <groupId>org.ccci</groupId>
-    <artifactId>ccci-root</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <artifactId>abstract-java-project</artifactId>
+    <version>2</version>
     <relativePath/>
   </parent>
  
-    <issueManagement>
-      <system>Jira</system>
-      <url>http://itwiki.ccci.org/jira/browse/SSW</url>
-    </issueManagement>
-    
-    <ciManagement>
-      <system>Bamboo</system>
-    </ciManagement>
-    
-    <scm>
-      <connection>scm:svn:http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</connection>
-      <developerConnection>scm:svn:http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</developerConnection>
-      <!-- no fisheye yet: -->
-      <url>http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</url>
-    </scm>
+  <ciManagement>
+    <system>Bamboo</system>
+  </ciManagement>
+  
+  <scm>
+    <connection>scm:svn:http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</connection>
+    <developerConnection>scm:svn:http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</developerConnection>
+  </scm>
   
   <build>
     <plugins>
@@ -67,15 +60,6 @@
             <version>2.1.4</version>
           </dependency>
         </dependencies>
-      </plugin>
-      
-      <plugin>
-      	<groupId>org.apache.maven.plugins</groupId>
-      	<artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>${java.source.version}</source>
-          <target>${java.source.version}</target>
-        </configuration>
       </plugin>
       
       <plugin>
@@ -128,13 +112,6 @@
       </exclusions>
     </dependency>
 
-    <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-all</artifactId>
-      <version>1.2</version>
-      <scope>test</scope>
-    </dependency>
-    
 
     <dependency>
       <groupId>javax.xml.ws</groupId>
@@ -165,18 +142,6 @@
     </dependency>
   
     <dependency>
-      <groupId>joda-time</groupId>
-      <artifactId>joda-time</artifactId>
-      <version>1.6</version>
-    </dependency>
-    
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>r07</version>
-    </dependency>
-    
-    <dependency>
       <groupId>commons-pool</groupId>
       <artifactId>commons-pool</artifactId>
       <version>1.5.5</version>
@@ -184,15 +149,14 @@
     </dependency>
 
     <dependency>
-        <groupId>log4j</groupId>
-        <artifactId>log4j</artifactId>
-        <version>1.2.14</version>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>1.2.14</version>
     </dependency>
 
   </dependencies>
   
   <properties>
-    <java.source.version>1.6</java.source.version>
   <!-- 
     <http.nonProxyHosts>hart-*|harta*|*.ccci.org</http.nonProxyHosts>
    -->

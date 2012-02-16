@@ -114,7 +114,7 @@ public class ReportDefinition<T>
         ReportColumn<T> column = columns.get(columnName);
         if (column == null)
         {
-            throw new IllegalArgumentException("There is no column named " + columnName);
+            throw new IllegalArgumentException(getName() + " has no column named " + columnName);
         }
         return column;
     }

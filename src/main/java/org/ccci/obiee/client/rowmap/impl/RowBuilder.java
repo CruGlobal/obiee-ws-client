@@ -28,24 +28,29 @@ class RowBuilder<T>
         this.converterStore = converterStore;
         
         rowConstructor = getRowConstructor(rowType);
-        for (Field field : rowType.getDeclaredFields())
+        Class<?> clazz = rowType;
+        while(!clazz.getName().equals("java.lang.Object"))
         {
-            if (field.isAnnotationPresent(Column.class))
+            for (Field field : clazz.getDeclaredFields())
             {
-                ReportColumnId columnId = ReportColumnId.buildColumnId(field);
-                if (columnToFieldMapping.containsKey(columnId))
+                if (field.isAnnotationPresent(Column.class))
                 {
-                    throw new RowmapConfigurationException(String.format(
-                        "two fields are mapped to the same report column: %s, and %s",
-                        field,
-                        columnToFieldMapping.get(columnId)));
+                    ReportColumnId columnId = ReportColumnId.buildColumnId(field);
+                    if (columnToFieldMapping.containsKey(columnId))
+                    {
+                        throw new RowmapConfigurationException(String.format(
+                            "two fields are mapped to the same report column: %s, and %s",
+                            field,
+                            columnToFieldMapping.get(columnId)));
+                    }
+                    
+                    checkFieldHasCorrespondingReportColumn(rowType, field, columnId);
+                    checkFieldTypeIsSupported(converterStore, field);
+                    ensureFieldAccessible(field);
+                    columnToFieldMapping.put(columnId, field);
                 }
-                
-                checkFieldHasCorrespondingReportColumn(rowType, field, columnId);
-                checkFieldTypeIsSupported(converterStore, field);
-                ensureFieldAccessible(field);
-                columnToFieldMapping.put(columnId, field);
             }
+            clazz = clazz.getSuperclass();
         }
         
     }

@@ -38,15 +38,19 @@ public class ReportDefinition<T>
     private ConverterStore buildConverters(Class<T> rowType)
     {
         ConverterStore store = new ConverterStore();
-        //TODO: search superclasses for enum fields, as well
-        for (Field field : rowType.getDeclaredFields())
+        Class<?> clazz = rowType;
+        while(!clazz.getName().equals("java.lang.Object"))
         {
-            Class<?> type = field.getType();
-            
-            if (Enum.class.isAssignableFrom(type))
+            for (Field field : clazz.getDeclaredFields())
             {
-                addConverterForEnumType(type, store);
+                Class<?> type = field.getType();
+                
+                if (Enum.class.isAssignableFrom(type))
+                {
+                    addConverterForEnumType(type, store);
+                }
             }
+            clazz = clazz.getSuperclass();
         }
         return store;
     }
@@ -88,13 +92,18 @@ public class ReportDefinition<T>
     private Map<String, ReportColumn<T>> buildColumns(Class<T> rowType)
     {
         Map<String, ReportColumn<T>> columns = new HashMap<String, ReportColumn<T>>();
-        for (Field field : rowType.getDeclaredFields())
+        Class<?> clazz = rowType;
+        while(!clazz.getName().equals("java.lang.Object"))
         {
-            if (field.isAnnotationPresent(Column.class))
+            for (Field field : clazz.getDeclaredFields())
             {
-                ReportColumn<T> column = new ReportColumn<T>(field, rowType);
-                columns.put(column.getName(), column);
+                if (field.isAnnotationPresent(Column.class))
+                {
+                    ReportColumn<T> column = new ReportColumn<T>(field, rowType);
+                    columns.put(column.getName(), column);
+                }
             }
+            clazz = clazz.getSuperclass();
         }
         return columns;
     }

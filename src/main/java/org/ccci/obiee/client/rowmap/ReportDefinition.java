@@ -39,7 +39,7 @@ public class ReportDefinition<T>
     {
         ConverterStore store = new ConverterStore();
         Class<?> clazz = rowType;
-        while(!clazz.getName().equals("java.lang.Object"))
+        while(!clazz.equals(Object.class))
         {
             for (Field field : clazz.getDeclaredFields())
             {

@@ -29,7 +29,7 @@ class RowBuilder<T>
         
         rowConstructor = getRowConstructor(rowType);
         Class<?> clazz = rowType;
-        while(!clazz.getName().equals("java.lang.Object"))
+        while(!clazz.equals(Object.class))
         {
             for (Field field : clazz.getDeclaredFields())
             {

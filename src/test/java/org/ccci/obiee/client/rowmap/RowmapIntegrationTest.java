@@ -2,32 +2,18 @@
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.not;
 
-import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.List;
 
 import org.ccci.obiee.client.rowmap.SaiDonationRow.SaiDonationParameters;
-import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerFactoryImpl;
-import org.hamcrest.Matchers;
 import org.joda.time.LocalDate;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.siebel.analytics.web.soap.v5.ReportEditingService;
-import com.siebel.analytics.web.soap.v5.SAWSessionService;
-import com.siebel.analytics.web.soap.v5.XmlViewService;
-
 public class RowmapIntegrationTest
 {
-    private static final String USERNAME = "INTF_SSW";
-    private static final String PASSWORD = "INTF_SSW";
-    static final boolean validUsernamePassword = true;
-
 
     AnalyticsManagerFactory factory;
     AnalyticsManager manager;
@@ -35,7 +21,7 @@ public class RowmapIntegrationTest
     @BeforeClass
     public void setupFactory()
     {
-        factory = new AnalyticsManagerFactoryImpl(new SAWSessionService(), new XmlViewService(), new ReportEditingService(), USERNAME, PASSWORD);
+        factory = new AnalyticsManagerConfigurer().getAMFactory();
     }
     
     @BeforeMethod
@@ -51,7 +37,7 @@ public class RowmapIntegrationTest
     }
     
 
-    @Test(enabled = validUsernamePassword)
+    @Test
     public void testRetrieveWithNoParameters() throws Exception
     {
         Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
@@ -71,7 +57,7 @@ public class RowmapIntegrationTest
 //        assertThat(first.getTransactionNumber(), is("1F7Z500-000376764"));
     }
     
-    @Test(enabled = validUsernamePassword)
+    @Test
     public void testRetrieveWithDesignationParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -94,7 +80,7 @@ public class RowmapIntegrationTest
 //        assertThat(first.getTransactionNumber(), is("R092530-000105923"));
     }
     
-    @Test(enabled = validUsernamePassword)
+    @Test
     public void testRetrieveWithAccountNumberParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -118,7 +104,7 @@ public class RowmapIntegrationTest
 //        assertThat(first.getTransactionNumber(), is("1F7Z500-000376764"));
     }
     
-    @Test(enabled = validUsernamePassword)
+    @Test
     public void testRetrieveWithAccountNumberAndDesignationParameters() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -209,7 +195,7 @@ public class RowmapIntegrationTest
 //        assertThat(first.getTransactionNumber(), is("4H8K207-437153485"));
     }
     
-    @Test(enabled = validUsernamePassword)
+    @Test
     public void testSortByDate() throws Exception
     {
     	SortDirection direction = SortDirection.ASCENDING;

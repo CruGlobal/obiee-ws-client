@@ -1,4 +1,4 @@
-package org.ccci.obiee.client.rowmap.impl;
+package org.ccci.obiee.client.rowmap;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,7 +8,10 @@ import java.util.Properties;
 
 import javax.xml.namespace.QName;
 
-import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
+import org.ccci.obiee.client.init.AnswersServiceFactory;
+import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerFactoryImpl;
+import org.ccci.obiee.client.rowmap.impl.RowmapConfiguration;
+
 import com.siebel.analytics.web.soap.v5.ReportEditingService;
 import com.siebel.analytics.web.soap.v5.SAWSessionService;
 import com.siebel.analytics.web.soap.v5.XmlViewService;
@@ -17,10 +20,6 @@ public class AnalyticsManagerConfigurer {
 	
 	private final AnalyticsManagerFactory factory;
     
-    private static final QName sawServiceQName = new QName("com.siebel.analytics.web/soap/v5", "SAWSessionService");
-    private static final QName viewServiceQName = new QName("com.siebel.analytics.web/soap/v5", "XmlViewService");
-    private static final QName reportEditingServiceQName = new QName("com.siebel.analytics.web/soap/v5", "ReportEditingService");	
-	
     public AnalyticsManagerConfigurer()
     {
     	Properties obieeProperties;
@@ -32,28 +31,29 @@ public class AnalyticsManagerConfigurer {
     	{
     		throw new RuntimeException("unable to load obiee.properties file", e);
     	}
-    	String username = getRequiredProperty(obieeProperties, "obiee.username");
+    	RowmapConfiguration config = buildRowmapConfiguration(obieeProperties);
+    	
+    	AnswersServiceFactory serviceFactory = new AnswersServiceFactory();
+    	
+        factory = new AnalyticsManagerFactoryImpl(
+            serviceFactory,
+			config);
+    }
+
+    private RowmapConfiguration buildRowmapConfiguration(Properties obieeProperties)
+    {
+        String username = getRequiredProperty(obieeProperties, "obiee.username");
     	String password = getRequiredProperty(obieeProperties, "obiee.password");
-    	String wsdlUrlAsString = getRequiredProperty(obieeProperties, "obiee.wsdl.url");
+    	String endpointBaseUrl= getRequiredProperty(obieeProperties, "obiee.endpoint.baseUrl");
 
-    	URL wsdlUrl;
-    	try
-    	{
-    		wsdlUrl = new URL(wsdlUrlAsString);
-    	}
-    	catch (MalformedURLException e)
-    	{
-    		throw new IllegalArgumentException("invalid obiee wsdl url: " + wsdlUrlAsString);
-    	}
-
-    	factory = new AnalyticsManagerFactoryImpl(
-    			new SAWSessionService(wsdlUrl, sawServiceQName), 
-    			new XmlViewService(wsdlUrl, viewServiceQName), 
-    			new ReportEditingService(wsdlUrl, reportEditingServiceQName),
-    			username, 
-    			password);
+    	RowmapConfiguration config = new RowmapConfiguration();
+    	config.setUsername(username);
+    	config.setPassword(password);
+    	config.setEndpointBaseUrl(endpointBaseUrl);
+        return config;
     }
     
+
     private String getRequiredProperty(Properties obieeProperties, String property)
     {
         String value = obieeProperties.getProperty(property);

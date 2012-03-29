@@ -28,10 +28,10 @@ public class SaiDonationRow
     @Column(tableHeading = "Designation")
     private String designationNumber;
     
-    @Column(tableHeading = "Account Profile")
+    @Column(tableHeading = "Source Account Profile")
     private String accountNumber;
     
-    @Column(tableHeading = "Account Profile")
+    @Column(tableHeading = "Source Account Profile")
     private String accountName;
     
     @Column(tableHeading = "Transaction Date")
@@ -42,7 +42,7 @@ public class SaiDonationRow
     
     @Column(tableHeading = "Transaction Item")
     @Scale(2)
-    private BigDecimal amount;
+    private BigDecimal transactionAmount;
     
     @Column(tableHeading = "Transaction Item", columnHeading = "ROW_WID")
     private String transactionItemRowWid;
@@ -105,14 +105,14 @@ public class SaiDonationRow
         this.subType = subType;
     }
 
-    public BigDecimal getAmount()
+    public BigDecimal getTransactionAmount()
     {
-        return amount;
+        return transactionAmount;
     }
 
-    public void setAmount(BigDecimal amount)
+    public void setTransactionAmount(BigDecimal transactionAmount)
     {
-        this.amount = amount;
+        this.transactionAmount = transactionAmount;
     }
 
     public String getTransactionItemRowWid()

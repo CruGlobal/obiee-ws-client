@@ -3,7 +3,7 @@
     xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
     xmlns:jaxws="http://java.sun.com/xml/ns/jaxws"
     
-    wsdlLocation="http://hart-a730.ccci.org:7001/Analytics/saw.dll?WSDL">
+    wsdlLocation="wsdl/siebel-analytics-web.wsdl">
     <jaxws:package name="com.siebel.analytics.web.soap.v5"/>
     
     <jaxws:bindings node="wsdl:definitions/wsdl:portType[@name='ReplicationServiceSoap']/wsdl:operation[@name='import']">

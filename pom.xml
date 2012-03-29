@@ -25,25 +25,36 @@
   <build>
     <plugins>
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
+        <groupId>org.jvnet.jax-ws-commons</groupId>
         <artifactId>jaxws-maven-plugin</artifactId>
-        <version>1.12</version>
+        <version>2.2</version>
         <executions>
           <execution>
             <goals>
               <goal>wsimport</goal>
             </goals>
             <configuration>
-              <wsdlUrls>
-                <wsdlUrl>http://hart-a730.ccci.org:7001/Analytics/saw.dll?WSDL</wsdlUrl>
-              </wsdlUrls>
-              <args>
-               <!-- 
-                 Answers' wsdl file erroneously imports the xsd as a wsdl:import, not an xsd:import, so we have to manually tell it
-                 where to get the xsd.  This also generates a warning message at runtime, but we can safely ignore it.
+              <target>2.1</target>
+              <wsdlDirectory>src/main/resources/wsdl</wsdlDirectory>
+              <wsdlFiles>
+                <!-- This is a slightly modified copy of https://insightstage.ccci.org/Analytics/saw.dll?WSDL
+                It has been modified in two ways:
+                 1)  the endpoint urls have been changed to 'https' instead of 'http'; the jax-ws client can't handle
+                   the loadbalancer's 302 redirect from http to https urls, and all of the links in the Answers-published wsdl 
+                   currently are http urls (it doesn't realize it has an https proxy in front, because WebLogic hasn't been configured
+                   accordingly)
+                 2) the <wsdl:import> element has been replaced by a <wsdl:types> element with an <xsd:import>.  Not sure
+                   why the published Answers wsdl screws this up.
+                  -->
+                <wsdlFile>siebel-analytics-web.wsdl</wsdlFile>
+              </wsdlFiles>
+                <!-- 
+                This isn't actually useful; there isn't a classpath URL handler.  But specifying 
+                https://insightstage.ccci.org/Analytics/saw.dll?WSDL isn't helpful, really, because that
+                published wsdl is unusable by jax-ws for the reasons mentioned above.
                 -->
-               <param>-b</param>
-               <param>http://hart-a730.ccci.org:7001/Analytics/res/wsdl/schemas/sawservices.xsd</param>
+              <wsdlLcation>classpath:/wsdl/siebel-analytics-web.wsdl</wsdlLcation>
+              <args>
                <param>-b</param>
                <param>src/main/resources/jaxws-bindings.xml</param>
                <param>-b</param>
@@ -53,13 +64,6 @@
           </execution>
         </executions>
 
-        <dependencies>
-          <dependency>
-            <groupId>com.sun.xml.ws</groupId>
-            <artifactId>jaxws-tools</artifactId>
-            <version>2.1.4</version>
-          </dependency>
-        </dependencies>
       </plugin>
       
       <plugin>
@@ -79,6 +83,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
+        <version>1.7</version>
         <executions>
           <execution>
             <id>add-source</id>
@@ -88,7 +93,7 @@
             </goals>
             <configuration>
               <sources>
-                <source>${basedir}/target/jaxws/wsimport/java</source>
+                <source>${basedir}/target/generated-sources/wsimport</source>
               </sources>
             </configuration>
           </execution>

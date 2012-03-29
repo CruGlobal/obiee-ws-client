@@ -16,11 +16,10 @@ import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
 public class GhostTest
 {
 
-    final static String TEST_USER = "INTF_SSW";
-    final static String TEST_PASSWORD= "INTF_SSW";
-    final static boolean credentialsAreReal = true;
+    final static String TEST_USER = "ssw.test.obiee.user@ccci.org";
+    final static String TEST_PASSWORD = "CcciSsw1234";
     
-    @Test(enabled = credentialsAreReal)
+    @Test(enabled = false)
     public void testLogonLogoff()
     {
         SAWSessionService sessionServiceEndpoint = new SAWSessionService();
@@ -30,16 +29,8 @@ public class GhostTest
         sessionService.logoff(sessionID);
     }
     
-    @Test
-    public void testHttpNonProxyHosts()
-    {
-        System.out.println(System.getProperty("http.nonProxyHosts"));
-        System.out.println(System.getProperty("http.proxyHost"));
-        System.out.println(System.getProperty("http.proxyPort"));
-    }
     
-    
-    @Test(enabled = credentialsAreReal)
+    @Test(enabled = false)
     public void testRunQuery()
     {
         XmlViewService xmlViewServiceEndpoint = new XmlViewService();

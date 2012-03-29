@@ -1,9 +1,12 @@
 package org.ccci.obiee.client.rowmap.impl;
 
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.ws.BindingProvider;
 
+import org.ccci.obiee.client.init.AnswersServiceFactory;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
 
@@ -29,6 +32,7 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
     
     /** connect timeout in ms.  Default is 4 seconds. */
     private volatile int connectTimeout = (int) TimeUnit.SECONDS.toMillis(4);
+    private String endpointBaseUrl;
     
     public AnalyticsManagerFactoryImpl(SAWSessionService sawSessionService, XmlViewService xmlViewService, ReportEditingService reportEditingService, String username, String password)
     {
@@ -39,6 +43,16 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         this.password = password;
     }
     
+    public AnalyticsManagerFactoryImpl(AnswersServiceFactory serviceFactory, RowmapConfiguration config)
+    {
+        this.sawSessionService = serviceFactory.buildService(SAWSessionService.class);
+        this.xmlViewService = serviceFactory.buildService(XmlViewService.class);
+        this.reportEditingService = serviceFactory.buildService(ReportEditingService.class);
+        this.username = config.getUsername();
+        this.password = config.getPassword();
+        this.endpointBaseUrl = config.getEndpointBaseUrl();
+    }
+
     public AnalyticsManager createAnalyticsManager()
     {
         SAWSessionServiceSoap sawSessionServiceSoap = sawSessionService.getSAWSessionServiceSoap();
@@ -67,6 +81,27 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         bindingProvider.getRequestContext().put(BindingProviderProperties.CONNECT_TIMEOUT, connectTimeout);
         bindingProvider.getRequestContext().put(BindingProviderProperties.REQUEST_TIMEOUT, readTimeout);
         bindingProvider.getRequestContext().put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
+        
+        setEndpointAddressIfNecessary(bindingProvider);
+    }
+
+    private void setEndpointAddressIfNecessary(BindingProvider bindingProvider) throws AssertionError
+    {
+        String defaultEndpointAddress = (String) bindingProvider.getRequestContext().get(BindingProvider.ENDPOINT_ADDRESS_PROPERTY);
+        if (!defaultEndpointAddress.startsWith(endpointBaseUrl))
+        {
+            String newEndpointAddress = buildNewEndpointAddress(defaultEndpointAddress);
+            bindingProvider.getRequestContext().put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, newEndpointAddress);
+        }
+    }
+
+    String buildNewEndpointAddress(String defaultEndpointAddress) throws AssertionError
+    {
+        Matcher matcher = Pattern.compile("^https?://[^/]*/(.*)").matcher(defaultEndpointAddress);
+        boolean matches = matcher.matches();
+        if (!matches) throw new AssertionError("Can't find endpoint url suffix in " + defaultEndpointAddress);
+        String endpointUrlSuffix = matcher.group(1);
+        return endpointBaseUrl + "/" + endpointUrlSuffix;
     }
 
 

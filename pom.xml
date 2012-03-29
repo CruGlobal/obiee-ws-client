@@ -53,7 +53,7 @@
                 https://insightstage.ccci.org/Analytics/saw.dll?WSDL isn't helpful, really, because that
                 published wsdl is unusable by jax-ws for the reasons mentioned above.
                 -->
-              <wsdlLcation>classpath:/wsdl/siebel-analytics-web.wsdl</wsdlLcation>
+              <wsdlLocation>/wsdl/siebel-analytics-web.wsdl</wsdlLocation>
               <args>
                <param>-b</param>
                <param>src/main/resources/jaxws-bindings.xml</param>

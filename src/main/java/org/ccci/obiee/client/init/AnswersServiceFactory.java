@@ -14,7 +14,8 @@ public class AnswersServiceFactory
 {
     public <T extends Service> T buildService(Class<T> serviceClass)
     {
-        URL wsdlLocation = getClass().getResource("/META-INF/wsdl/siebel-analytics-web.wsdl");
+        URL wsdlLocation = getClass().getResource("/wsdl/siebel-analytics-web.wsdl");
+        assert wsdlLocation != null;
         QName serviceName = new QName(getTargetNamespaceURI(serviceClass), getServiceName(serviceClass));
         return construct(serviceClass, wsdlLocation, serviceName);
     }

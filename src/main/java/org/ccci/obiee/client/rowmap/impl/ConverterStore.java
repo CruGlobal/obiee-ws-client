@@ -97,7 +97,7 @@ public class ConverterStore
         
         converterStore.addConverter(LocalDate.class, new Converter<LocalDate>()
             {
-                DateTimeFormatter isoFormatter = ISODateTimeFormat.dateHourMinuteSecond();
+                DateTimeFormatter isoFormatter = ISODateTimeFormat.date();
                 
                 public LocalDate convert(String xmlValue, Field field)
                 {

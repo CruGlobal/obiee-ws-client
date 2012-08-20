@@ -2,19 +2,11 @@ package org.ccci.obiee.client.rowmap;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Properties;
-
-import javax.xml.namespace.QName;
 
 import org.ccci.obiee.client.init.AnswersServiceFactory;
 import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerFactoryImpl;
 import org.ccci.obiee.client.rowmap.impl.RowmapConfiguration;
-
-import com.siebel.analytics.web.soap.v5.ReportEditingService;
-import com.siebel.analytics.web.soap.v5.SAWSessionService;
-import com.siebel.analytics.web.soap.v5.XmlViewService;
 
 public class AnalyticsManagerConfigurer {
 	
@@ -50,9 +42,18 @@ public class AnalyticsManagerConfigurer {
     	config.setUsername(username);
     	config.setPassword(password);
     	config.setEndpointBaseUrl(endpointBaseUrl);
+    	config.setReadTimeout(asInteger(obieeProperties.getProperty("obiee.readTimeout")));
         return config;
     }
     
+
+    private Integer asInteger(String property)
+    {
+        if (property == null)
+            return null;
+        else
+            return Integer.valueOf(property);
+    }
 
     private String getRequiredProperty(Properties obieeProperties, String property)
     {

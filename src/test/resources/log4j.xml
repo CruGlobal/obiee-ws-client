@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+
+<!-- ===================================================================== -->
+<!--                                                                       -->
+<!--  Log4j Configuration   (for testing)                                  -->
+<!--                                                                       -->
+<!-- ===================================================================== -->
+
+<!--
+   | For more configuration information and examples see the Jakarta Log4j
+   | website: http://jakarta.apache.org/log4j
+ -->
+
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/" debug="false">
+	
+   <appender name="console" class="org.apache.log4j.ConsoleAppender">
+      <param name="Target" value="System.out"/>
+
+      <layout class="org.apache.log4j.PatternLayout">
+         <param name="ConversionPattern" value="%-5p %d{dd-MM HH:mm:ss,SSS} [%C.%M():%L] %m%n"/>
+      </layout>
+   </appender>
+
+   <logger name="org.ccci">
+      <level value="info"/>
+   </logger>
+
+   <logger name="org.ccci.obiee.client.rowmap.impl.StopwatchOperationTimer">
+      <level value="debug"/>
+   </logger>
+   
+   <logger name="org.ccci.obiee.client.rowmap.RowmapIntegrationTest">
+      <level value="debug"/>
+   </logger>
+
+   <root>
+      <level value="info"/>
+      <appender-ref ref="console"/>
+   </root>
+
+</log4j:configuration>

@@ -6,12 +6,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 import javax.xml.XMLConstants;
@@ -34,9 +32,10 @@ import org.ccci.obiee.client.rowmap.RowmapConfigurationException;
 import org.ccci.obiee.client.rowmap.SortDirection;
 import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
+import org.ccci.obiee.client.rowmap.util.Doms;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
-import org.joda.time.LocalTime;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -82,9 +81,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     private final DocumentBuilder builder;
     private final ConverterStore converterStore;
     private final ReportEditingServiceSoap reportEditingService;
-    
+    private OperationTimer operationTimer = new NoOpOperationTimer();
     private boolean closed = false;
-
+    
     /**
      * Assumes that the caller has logged us in to OBIEE already.  
      * @param sessionId used to maintain session for various calls
@@ -232,13 +231,21 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 rows = getRows(doc);
             }
             
+            List<T> results = buildResults(rowBuilder, rows);
+            
+            return results;
+        }
+
+        private List<T> buildResults(RowBuilder<T> rowBuilder, NodeList rows)
+        {
+            operationTimer.start();
             List<T> results = new ArrayList<T>();
-            for (Node row : each(rows))
+            for (Node row : Doms.each(rows))
             {
                 T rowInstance = rowBuilder.buildRowInstance(row);
                 results.add(rowInstance);
             }
-            
+            operationTimer.stopAndLog("result list built");
             return results;
         }
         
@@ -246,32 +253,20 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(doc);
             
-            Map<ReportColumnId, XPathExpression> columnValueExpressions = new HashMap<ReportColumnId, XPathExpression>();
+            Map<ReportColumnId, String> elementNamesPerColumnId = new HashMap<ReportColumnId, String>();
             
-            for (Node node : each(columnDefinitionXsdElements) )
+            for (Node node : Doms.each(columnDefinitionXsdElements) )
             {
                 String elementName = node.getAttributes().getNamedItem("name").getNodeValue();
                 String tableHeading = node.getAttributes().getNamedItem("saw-sql:tableHeading").getNodeValue();
                 String columnHeading = node.getAttributes().getNamedItem("saw-sql:columnHeading").getNodeValue();
-                XPath xpath = xpathFactory.newXPath();
-                xpath.setNamespaceContext(new RowsetNamespaceContext());
                 
-                XPathExpression columnValueExpression;
-                try
-                {
-                    columnValueExpression = xpath.compile("rowset:" + elementName + "/text()");
-                }
-                catch (XPathExpressionException e)
-                {
-                    throw new RuntimeException(e);
-                }
-                
-                columnValueExpressions.put(new ReportColumnId(tableHeading, columnHeading), columnValueExpression);
+                elementNamesPerColumnId.put(new ReportColumnId(tableHeading, columnHeading), elementName);
             }
             ConverterStore converters = reportDefinition.getConverterStore();
             ConverterStore reportConverterStore = converterStore.copyAndAdd(converters);
             
-            return new RowBuilder<T>(columnValueExpressions, reportDefinition.getRowType(), reportConverterStore);
+            return new RowBuilder<T>(elementNamesPerColumnId, reportDefinition.getRowType(), reportConverterStore);
         }
         
         
@@ -309,7 +304,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         
         ReportColumnId sortColumnId = ReportColumnId.buildColumnId(sortColumn.getField());
         
-        for (Node node : each(columnDefinitionXsdElements) )
+        for (Node node : Doms.each(columnDefinitionXsdElements) )
         {
             ReportColumnId potentialColumnId = new ReportColumnId(
                 node.getAttributes().getNamedItem("saw-sql:tableHeading").getNodeValue(), 
@@ -355,49 +350,74 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
         	var.setName(reportParamVar.name());
         }
+        var.setValue(getVariableValue(field, value, fieldType));
+        return var;
+    }
+
+    private Object getVariableValue(Field field, Object value, Class<?> fieldType)
+    {
         if(fieldType.equals(String.class))
         {
-        	var.setValue(value.toString());
+        	return (String) value;
         }
         else if(fieldType.equals(LocalDate.class))
         {
-        	LocalDate ld = (LocalDate)value;
-        	DateTime dTime = ld.toDateTime(new LocalTime(1,0,0,0));
-        	Date dt = dTime.toDate();
-        	var.setValue(dt);
+        	return convertLocalDateToUTCDate(value);
         }
         else if(fieldType.equals(DateTime.class))
         {
-        	DateTime dTime = (DateTime)value;
-        	Date dt = dTime.toDate();
-        	var.setValue(dt);
+        	return convertDateTimeToUTCDate(value);
         }
         else if(fieldType.equals(Set.class) && field.getGenericType() instanceof ParameterizedType)
         {
-            ParameterizedType parameterizedFieldType = (ParameterizedType) field.getGenericType();
-            Type setType = parameterizedFieldType.getActualTypeArguments()[0];
-            if (setType.equals(String.class))
-            {
-                @SuppressWarnings("unchecked") //this is actually checked in the if() statement directly above
-                Set<String> set = (Set<String>) value;
-                StringBuilder builder = new StringBuilder();
-                for(String s: set)
-                {
-                    builder.append("'").append(s).append("',");
-                }
-                builder.setLength(builder.length() - 1);
-                var.setValue(builder.toString());
-            }
-            else
-            {
-        		throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
-        	}
+            return convertSetToInClauseList(field, value);
         }
         else
         {
         	throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
         }
-        return var;
+    }
+
+    private Object convertSetToInClauseList(Field field, Object value)
+    {
+        ParameterizedType parameterizedFieldType = (ParameterizedType) field.getGenericType();
+        Type setType = parameterizedFieldType.getActualTypeArguments()[0];
+        if (setType.equals(String.class))
+        {
+            @SuppressWarnings("unchecked") //this is actually checked in the if() statement directly above
+            Set<String> set = (Set<String>) value;
+            StringBuilder builder = new StringBuilder();
+            for(String s: set)
+            {
+                builder.append("'").append(s).append("',");
+            }
+            builder.setLength(builder.length() - 1);
+            return builder.toString();
+        }
+        else
+        {
+        	throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
+        }
+    }
+
+    /**
+     * It's important to send dates oriented to UTC, since the dates are stored in the data warehouse as UTC.
+     */
+    private Object convertDateTimeToUTCDate(Object value)
+    {
+        DateTime dateTime = (DateTime)value;
+        DateTime correctedDateTime = dateTime.withZoneRetainFields(DateTimeZone.UTC);
+        return correctedDateTime.toDate();
+    }
+
+    /**
+     * See note on {@link #convertDateTimeToUTCDate(Object)}
+     */
+    private Object convertLocalDateToUTCDate(Object value)
+    {
+        LocalDate localDate = (LocalDate)value;
+        DateTime dateTime = localDate.toDateTimeAtStartOfDay(DateTimeZone.UTC);
+        return dateTime.toDate();
     }
 
     private Object getValue(Object reportParams, Field field) throws AssertionError
@@ -419,16 +439,20 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     
     private String setupSqlForQuery(ReportPath reportPathConfiguration, ReportParams params, String sortFormula, SortDirection direction)
     {
+        operationTimer.start();
     	ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
         
         String sqlUsed = reportEditingService.generateReportSQL(report, params, sessionId);
-        
+
+        operationTimer.stopAndLog("queried for sql");
         return prepareSql(sqlUsed, sortFormula, direction);
     }
     
     private String queryForMetadata(ReportPath reportPathConfiguration, ReportParams reportParams)
     {
+        operationTimer.start();
+        
     	XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA;
         XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
         executionOptions.setMaxRowsPerPage(-1);
@@ -437,33 +461,31 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
 
-        QueryResults results;
-        try
-        {
-        	results = xmlViewService.executeXMLQuery(
-        	    report, 
-        	    outputFormat, 
-        	    executionOptions, 
-        	    reportParams, 
-        	    sessionId);
-        }
-        catch(RuntimeException e)
-        {
-            throw new DataRetrievalException(
-                String.format(
-                    "unable to query metadata for report %s with %s", 
-                    reportPathConfiguration.value(),
-                    formatParamsAsString(reportParams)), 
-                e);
-        }
+        QueryResults results = queryXmlViewServiceAndHandleExceptions(
+           reportPathConfiguration,
+           reportParams,
+           report,
+           outputFormat,
+           executionOptions);
+        operationTimer.stopAndLog("queried for metadata");
+
     	return results.getRowset();
     }
     
     private String sqlQueryForData(String sqlUsed)
     {
-    	XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
-      
-    	QueryResults results;
+        operationTimer.start();
+        
+        XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
+    	QueryResults results = queryXmlViewServiceWithSqlAndHandleExceptions(sqlUsed, outputFormat);
+        
+    	operationTimer.stopAndLog("queried for data");
+        return results.getRowset();
+    }
+
+    private QueryResults queryXmlViewServiceWithSqlAndHandleExceptions(String sqlUsed, XMLQueryOutputFormat outputFormat)
+    {
+        QueryResults results;
     	try
     	{
     		results = xmlViewService.executeSQLQuery(sqlUsed, outputFormat, new XMLQueryExecutionOptions(), sessionId);
@@ -473,11 +495,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         	throw new DataRetrievalException(
         			String.format("unable to query with sql: ", sqlUsed), e);
         }
-        return results.getRowset();
+        return results;
     }
     
     private String queryForMetadataAndData(ReportPath reportPathConfiguration, ReportParams reportParams)
     {
+        operationTimer.start();
         ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
         
@@ -485,7 +508,21 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
         executionOptions.setMaxRowsPerPage(-1);
         executionOptions.setPresentationInfo(true);
-        
+        QueryResults queryResults = queryXmlViewServiceAndHandleExceptions(
+            reportPathConfiguration, 
+            reportParams, 
+            report, 
+            outputFormat,
+            executionOptions);
+        operationTimer.stopAndLog("queried for metadata and data");
+        return queryResults.getRowset();
+    }
+
+    private QueryResults queryXmlViewServiceAndHandleExceptions(ReportPath reportPathConfiguration,
+                                                                ReportParams reportParams, ReportRef report,
+                                                                XMLQueryOutputFormat outputFormat,
+                                                                XMLQueryExecutionOptions executionOptions)
+    {
         QueryResults queryResults;
         try
         {
@@ -505,16 +542,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                         formatParamsAsString(reportParams)), 
                     e);
         }
-        
-        return queryResults.getRowset();
+        return queryResults;
     }
 
 	/**
 	 * Formats the SQL statement to be used for sorting.
-	 * @param sqlUsed
-	 * @param tableHead
-	 * @param colName
-	 * @return
 	 */
 	private String prepareSql(String sqlUsed, String sortFormula, SortDirection direction)
 	{
@@ -557,6 +589,14 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     Document buildDocument(String rowset)
     {
+        operationTimer.start();
+        Document document = parseRowset(rowset);
+        operationTimer.stopAndLog("parsed xml document");
+        return document;
+    }
+
+    private Document parseRowset(String rowset)
+    {
         InputSource inputsource = new InputSource(new StringReader(rowset));
         try
         {
@@ -583,6 +623,14 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     NodeList getColumnSchemaNodesFromPreamble(Document doc)
     {
+        operationTimer.start();
+        NodeList nodeList = evaluateXsdXPathAndHandleExceptions(doc);
+        operationTimer.stopAndLog("executed schema preamble xpath query");
+        return nodeList;
+    }
+
+    private NodeList evaluateXsdXPathAndHandleExceptions(Document doc)
+    {
         try
         {
             return (NodeList) xsdElementExpression.evaluate(doc, XPathConstants.NODESET);
@@ -591,10 +639,17 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             throw new RuntimeException("unable to evaluate xpath expression on document", e);
         }
-        
     }
     
     NodeList getRows(Document doc)
+    {
+        operationTimer.start();
+        NodeList nodeList = executeRowXPathQueryAndHandleExceptions(doc);
+        operationTimer.stopAndLog("executed row xpath query");
+        return nodeList;
+    }
+
+    private NodeList executeRowXPathQueryAndHandleExceptions(Document doc)
     {
         try
         {
@@ -604,7 +659,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             throw new RuntimeException("unable to evaluate xpath expression on document", e);
         }
-        
     }
 
     static class RowsetNamespaceContext implements NamespaceContext {
@@ -628,39 +682,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
     }
 
-    private Iterable<Node> each(final NodeList nodeList)
-    {
-        return new Iterable<Node>()
-        {
-            
-            public Iterator<Node> iterator()
-            {
-                return new Iterator<Node>()
-                {
-                    int index = 0;
-
-                    public boolean hasNext()
-                    {
-                        return nodeList.getLength() > index;
-                    }
-
-                    public Node next()
-                    {
-                        if (index == nodeList.getLength())
-                            throw new NoSuchElementException();
-                        Node next = nodeList.item(index);
-                        index++;
-                        return next;
-                    }
-
-                    public void remove()
-                    {
-                        throw new UnsupportedOperationException();
-                    }
-                };
-            }
-        };
-    }
 
     @Override
     public void validate()
@@ -674,4 +695,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             throw new IllegalStateException("manager is no longer usable", e);
         }
     }
+
+    public void setOperationTimer(OperationTimer operationTimer)
+    {
+        this.operationTimer = operationTimer;
+    }
+    
+    
 }

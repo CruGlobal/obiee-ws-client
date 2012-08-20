@@ -28,10 +28,14 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
     private final String password;
 
     /** read timeout in ms.  Default is 30 seconds. */
-    private volatile int readTimeout = (int) TimeUnit.SECONDS.toMillis(30);
+    private final int readTimeout;
+    private static final int DEFAULT_READ_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(30);
     
     /** connect timeout in ms.  Default is 4 seconds. */
-    private volatile int connectTimeout = (int) TimeUnit.SECONDS.toMillis(4);
+    private final int connectTimeout;
+    private static final int DEFAULT_CONNECT_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(4);
+    
+    
     private String endpointBaseUrl;
     
     public AnalyticsManagerFactoryImpl(SAWSessionService sawSessionService, XmlViewService xmlViewService, ReportEditingService reportEditingService, String username, String password)
@@ -41,6 +45,8 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         this.reportEditingService = reportEditingService;
         this.username = username;
         this.password = password;
+        this.readTimeout = DEFAULT_CONNECT_TIMEOUT;
+        this.connectTimeout = DEFAULT_CONNECT_TIMEOUT;
     }
     
     public AnalyticsManagerFactoryImpl(AnswersServiceFactory serviceFactory, RowmapConfiguration config)
@@ -51,6 +57,8 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         this.username = config.getUsername();
         this.password = config.getPassword();
         this.endpointBaseUrl = config.getEndpointBaseUrl();
+        this.readTimeout = config.getReadTimeout() == null ? DEFAULT_READ_TIMEOUT : config.getReadTimeout();
+        this.connectTimeout = config.getConnectTimeout() == null ? DEFAULT_CONNECT_TIMEOUT : config.getConnectTimeout();
     }
 
     public AnalyticsManager createAnalyticsManager()
@@ -104,15 +112,9 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         return endpointBaseUrl + "/" + endpointUrlSuffix;
     }
 
-
     public int getReadTimeout()
     {
         return readTimeout;
-    }
-
-    public void setReadTimeout(int readTimeout)
-    {
-        this.readTimeout = readTimeout;
     }
 
     public int getConnectTimeout()
@@ -120,9 +122,4 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         return connectTimeout;
     }
 
-    public void setConnectTimeout(int connectTimeout)
-    {
-        this.connectTimeout = connectTimeout;
-    }
-    
 }

@@ -5,26 +5,26 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathExpressionException;
-
 import org.ccci.obiee.client.rowmap.Converter;
 import org.ccci.obiee.client.rowmap.DataRetrievalException;
 import org.ccci.obiee.client.rowmap.RowmapConfigurationException;
 import org.ccci.obiee.client.rowmap.annotation.Column;
+import org.ccci.obiee.client.rowmap.util.Doms;
 import org.w3c.dom.Node;
+
+import com.google.common.collect.Maps;
 
 class RowBuilder<T>
 {
-    final Map<ReportColumnId, XPathExpression> columnToValueExpressionMapping;
+    final Map<ReportColumnId, String> columnToNodeNameMapping;
     
     final Map<ReportColumnId, Field> columnToFieldMapping = new HashMap<ReportColumnId, Field>();
     private final ConverterStore converterStore;
     private final Constructor<T> rowConstructor;
     
-    public RowBuilder(Map<ReportColumnId, XPathExpression> columnToValueExpressionMapping, Class<T> rowType, ConverterStore converterStore)
+    public RowBuilder(Map<ReportColumnId, String> columnToNodeNameMapping, Class<T> rowType, ConverterStore converterStore)
     {
-        this.columnToValueExpressionMapping = columnToValueExpressionMapping;
+        this.columnToNodeNameMapping = columnToNodeNameMapping;
         this.converterStore = converterStore;
         
         rowConstructor = getRowConstructor(rowType);
@@ -94,7 +94,7 @@ class RowBuilder<T>
 
     private void checkFieldHasCorrespondingReportColumn(Class<T> rowType, Field field, ReportColumnId columnId)
     {
-        if (!this.columnToValueExpressionMapping.containsKey(columnId))
+        if (!this.columnToNodeNameMapping.containsKey(columnId))
         {
             throw new DataRetrievalException(
                 String.format(
@@ -110,10 +110,12 @@ class RowBuilder<T>
     {
         try
         {
-            T rowInstance = buildRowInstance();
+            T rowInstance = instantiateRow();
+            Map<String, String> nodeNamesToValues = buildNodeNameToValueMapping(rowNode);
             for (ReportColumnId columnId : columnToFieldMapping.keySet())
             {
-                String value = getXmlValue(rowNode, columnId);
+                String nodeName = columnToNodeNameMapping.get(columnId);
+                String value = nodeNamesToValues.get(nodeName);
                 Field field = columnToFieldMapping.get(columnId);
                 Object converted = convert(value, field);
                 updateModel(rowInstance, field, converted);
@@ -124,6 +126,20 @@ class RowBuilder<T>
         {
             throw new DataRetrievalException("unable to parse row: " + rowNode, e);
         }
+    }
+
+    private Map<String, String> buildNodeNameToValueMapping(Node rowNode)
+    {
+        Map<String, String> nodeNamesToValues = Maps.newHashMapWithExpectedSize(columnToFieldMapping.size());
+        
+        for (Node node : Doms.each(rowNode.getChildNodes()))
+        {
+            String nodeName = node.getNodeName();
+            Node textChild = node.getChildNodes().item(0);
+            String value = textChild.getNodeValue();
+            nodeNamesToValues.put(nodeName, value);
+        }
+        return nodeNamesToValues;
     }
 
     private void updateModel(T rowInstance, Field field, Object converted) throws AssertionError
@@ -138,23 +154,7 @@ class RowBuilder<T>
         }
     }
 
-    private String getXmlValue(Node rowNode, ReportColumnId columnId)
-    {
-        String value;
-        try
-        {
-            value = columnToValueExpressionMapping.get(columnId).evaluate(rowNode);
-        }
-        catch (XPathExpressionException e)
-        {
-            throw new DataRetrievalException(String.format(
-                "unable to extract textual value from column %s",
-                columnId), e);
-        }
-        return value;
-    }
-
-    private T buildRowInstance()
+    private T instantiateRow()
     {
         T rowInstance;
         try

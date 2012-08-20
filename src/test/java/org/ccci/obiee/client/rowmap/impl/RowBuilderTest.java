@@ -10,14 +10,10 @@ import java.util.Map;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
 
 import org.ccci.obiee.client.rowmap.annotation.Column;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
-import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerImpl.RowsetNamespaceContext;
 import org.testng.annotations.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -33,13 +29,13 @@ public class RowBuilderTest
     @Test
     public void testRowBuilderWithSingleResult() throws ParserConfigurationException, XPathExpressionException
     {
-        Map<ReportColumnId, XPathExpression> columnToValueExpressionMapping = new HashMap<ReportColumnId, XPathExpression>();
+        Map<ReportColumnId, String> columnToNodeNameMapping = new HashMap<ReportColumnId, String>();
         
-        columnToValueExpressionMapping.put(
+        columnToNodeNameMapping.put(
             new ReportColumnId("Fruit", "Name"), 
-            compileXpath("rowset:Column0/text()"));
+            "Column0");
         
-        fruitBuilder = new RowBuilder<Fruit>(columnToValueExpressionMapping, Fruit.class, ConverterStore.buildDefault());
+        fruitBuilder = new RowBuilder<Fruit>(columnToNodeNameMapping, Fruit.class, ConverterStore.buildDefault());
         
         Node row = buildBananaRow();
 
@@ -59,15 +55,6 @@ public class RowBuilderTest
         column0.setTextContent("Banana");
         return row;
     }
-
-    private XPathExpression compileXpath(String xpathExpression) throws XPathExpressionException
-    {
-        XPath xpath = XPathFactory.newInstance().newXPath();
-        xpath.setNamespaceContext(new RowsetNamespaceContext());
-        XPathExpression compiledExpression = xpath.compile(xpathExpression);
-        return compiledExpression;
-    }
-
 
     @ReportPath("/does/not/exist")
     public static class Fruit

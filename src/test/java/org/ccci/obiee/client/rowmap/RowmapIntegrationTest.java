@@ -1,7 +1,12 @@
     package org.ccci.obiee.client.rowmap;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.both;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.util.List;
 
@@ -9,6 +14,7 @@ import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.SaiDonationRow.SaiDonationParameters;
 import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerImpl;
 import org.ccci.obiee.client.rowmap.impl.StopwatchOperationTimer;
+import org.hamcrest.Matchers;
 import org.joda.time.LocalDate;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -94,18 +100,22 @@ public class RowmapIntegrationTest
         printRowsize(rows);
     }
     
-    @Test(enabled = false) //not getting any results; i need to look into this further
+    @Test(enabled = true) //not getting any results; i need to look into this further
     public void testRetrieveWithDateParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
-    	params.donationRangeBegin = new LocalDate(2009, 12, 1);
-    	params.donationRangeEnd = new LocalDate(2009, 12, 31);
+    	params.donationRangeBegin = new LocalDate(2011, 1, 1);
+    	params.donationRangeEnd = new LocalDate(2011, 12, 31);
         
     	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
 
-        assertThat(rows.size(), greaterThan(0));
+        assertThat(rows, hasSize(greaterThan(0)));
+        assertThat(rows, everyItem(
+            Matchers.<SaiDonationRow>hasProperty("transactionDate", 
+                both(greaterThanOrEqualTo(params.donationRangeBegin))
+                .and(lessThanOrEqualTo(params.donationRangeEnd)))));
         printRowsize(rows);
     }
     

@@ -2,6 +2,7 @@ package org.ccci.obiee.client.rowmap.impl;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -13,10 +14,24 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.xml.XMLConstants;
+import javax.xml.datatype.DatatypeConfigurationException;
+import javax.xml.datatype.DatatypeConstants;
+import javax.xml.datatype.DatatypeFactory;
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.soap.Detail;
+import javax.xml.soap.SOAPFault;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.TransformerFactoryConfigurationError;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.ws.soap.SOAPFaultException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
@@ -36,9 +51,13 @@ import org.ccci.obiee.client.rowmap.util.Doms;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.ISODateTimeFormat;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.w3c.dom.ls.DOMImplementationLS;
+import org.w3c.dom.ls.LSSerializer;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
@@ -81,6 +100,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     private final DocumentBuilder builder;
     private final ConverterStore converterStore;
     private final ReportEditingServiceSoap reportEditingService;
+    private final DatatypeFactory datatypeFactory;
+    
     private OperationTimer operationTimer = new NoOpOperationTimer();
     private boolean closed = false;
     
@@ -116,6 +137,14 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         catch (ParserConfigurationException e)
         {
             throw new RowmapConfigurationException("unable to build document builder", e);
+        }
+        try
+        {
+            datatypeFactory = DatatypeFactory.newInstance();
+        }
+        catch (DatatypeConfigurationException e)
+        {
+            throw new RowmapConfigurationException("unable to build xml DatatypeFactory", e);
         }
     }
 
@@ -362,7 +391,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         else if(fieldType.equals(LocalDate.class))
         {
-        	return convertLocalDateToUTCDate(value);
+        	return convertLocalDateToXmlDate(value);
         }
         else if(fieldType.equals(DateTime.class))
         {
@@ -411,13 +440,14 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     }
 
     /**
-     * See note on {@link #convertDateTimeToUTCDate(Object)}
+     * oddly, we can't just convert this to an xml 'date' object; Answers doesn't translate it correctly
+     * to sql syntax, as it does when we pass an xml 'dateTime' object.  So, we'll just pass a string
+     * ready for sql.
      */
-    private Object convertLocalDateToUTCDate(Object value)
+    private Object convertLocalDateToXmlDate(Object value)
     {
         LocalDate localDate = (LocalDate)value;
-        DateTime dateTime = localDate.toDateTimeAtStartOfDay(DateTimeZone.UTC);
-        return dateTime.toDate();
+        return "date '" + ISODateTimeFormat.yearMonthDay().print(localDate) + "'";
     }
 
     private Object getValue(Object reportParams, Field field) throws AssertionError
@@ -518,10 +548,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return queryResults.getRowset();
     }
 
-    private QueryResults queryXmlViewServiceAndHandleExceptions(ReportPath reportPathConfiguration,
-                                                                ReportParams reportParams, ReportRef report,
-                                                                XMLQueryOutputFormat outputFormat,
-                                                                XMLQueryExecutionOptions executionOptions)
+    private QueryResults queryXmlViewServiceAndHandleExceptions(
+            ReportPath reportPathConfiguration,
+            ReportParams reportParams, ReportRef report,
+            XMLQueryOutputFormat outputFormat,
+            XMLQueryExecutionOptions executionOptions)
     {
         QueryResults queryResults;
         try
@@ -533,19 +564,49 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 reportParams, 
                 sessionId);
         }
+        catch (SOAPFaultException e)
+        {
+            throw new DataRetrievalException(
+                    String.format(
+                        "unable to query report %s with %s; details follow:\n%s", 
+                        reportPathConfiguration.value(),
+                        formatParamsAsString(reportParams),
+                        getDetailsAsString(e.getFault())), 
+                    e);
+        }
         catch (RuntimeException e)
         {
-        	throw new DataRetrievalException(
-                    String.format(
-                        "unable to query report %s with %s", 
-                        reportPathConfiguration.value(),
-                        formatParamsAsString(reportParams)), 
-                    e);
+            throw new DataRetrievalException(
+                String.format(
+                    "unable to query report %s with %s", 
+                    reportPathConfiguration.value(),
+                    formatParamsAsString(reportParams)), 
+                        e);
         }
         return queryResults;
     }
 
-	/**
+	private String getDetailsAsString(SOAPFault fault)
+    {
+        try
+        {
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            transformerFactory.setAttribute("indent-number", 2);
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            StringWriter writer = new StringWriter();
+            Detail detail = fault.getDetail();
+            transformer.transform(new DOMSource(detail), new StreamResult(writer));
+            return writer.toString();
+        }
+        catch (Exception e)
+        // avoid throwing exceptions if we can, since this code is being run in the context of handling another exception
+        {
+            return "unable to get details due to xslt problem: " + e;
+        }
+    }
+
+    /**
 	 * Formats the SQL statement to be used for sorting.
 	 */
 	private String prepareSql(String sqlUsed, String sortFormula, SortDirection direction)

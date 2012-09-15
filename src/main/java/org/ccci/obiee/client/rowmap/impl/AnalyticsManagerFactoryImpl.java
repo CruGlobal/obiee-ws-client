@@ -5,10 +5,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.xml.ws.BindingProvider;
+import javax.xml.ws.soap.SOAPFaultException;
 
 import org.ccci.obiee.client.init.AnswersServiceFactory;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
+import org.ccci.obiee.client.rowmap.AnswersConnectionException;
+import org.ccci.obiee.client.rowmap.DataRetrievalException;
 
 import com.siebel.analytics.web.soap.v5.ReportEditingService;
 import com.siebel.analytics.web.soap.v5.ReportEditingServiceSoap;
@@ -72,7 +75,15 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         ReportEditingServiceSoap reportEditingServiceSoap = reportEditingService.getReportEditingServiceSoap();
         configurePort(reportEditingServiceSoap);
         
-        String sessionId = sawSessionServiceSoap.logon(username, password);
+        String sessionId;
+        try
+        {
+            sessionId = sawSessionServiceSoap.logon(username, password);
+        }
+        catch (SOAPFaultException e)
+        {
+            throw new AnswersConnectionException(username, e);
+        }
         
         ConverterStore converterStore = ConverterStore.buildDefault();
         return new AnalyticsManagerImpl(

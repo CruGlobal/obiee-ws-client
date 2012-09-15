@@ -14,9 +14,6 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.xml.XMLConstants;
-import javax.xml.datatype.DatatypeConfigurationException;
-import javax.xml.datatype.DatatypeConstants;
-import javax.xml.datatype.DatatypeFactory;
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -25,10 +22,7 @@ import javax.xml.soap.Detail;
 import javax.xml.soap.SOAPFault;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.ws.soap.SOAPFaultException;
@@ -48,20 +42,21 @@ import org.ccci.obiee.client.rowmap.SortDirection;
 import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
 import org.ccci.obiee.client.rowmap.util.Doms;
+import org.ccci.obiee.client.rowmap.util.SoapFaults;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
-import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.ISODateTimeFormat;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.w3c.dom.ls.DOMImplementationLS;
-import org.w3c.dom.ls.LSSerializer;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Iterables;
 import com.siebel.analytics.web.soap.v5.ReportEditingServiceSoap;
 import com.siebel.analytics.web.soap.v5.SAWSessionServiceSoap;
 import com.siebel.analytics.web.soap.v5.XmlViewServiceSoap;
@@ -100,7 +95,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     private final DocumentBuilder builder;
     private final ConverterStore converterStore;
     private final ReportEditingServiceSoap reportEditingService;
-    private final DatatypeFactory datatypeFactory;
     
     private OperationTimer operationTimer = new NoOpOperationTimer();
     private boolean closed = false;
@@ -137,14 +131,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         catch (ParserConfigurationException e)
         {
             throw new RowmapConfigurationException("unable to build document builder", e);
-        }
-        try
-        {
-            datatypeFactory = DatatypeFactory.newInstance();
-        }
-        catch (DatatypeConfigurationException e)
-        {
-            throw new RowmapConfigurationException("unable to build xml DatatypeFactory", e);
         }
     }
 
@@ -415,13 +401,15 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             @SuppressWarnings("unchecked") //this is actually checked in the if() statement directly above
             Set<String> set = (Set<String>) value;
-            StringBuilder builder = new StringBuilder();
-            for(String s: set)
+            Iterable<String> quotedStrings = Iterables.transform(set, new Function<String, String>()
             {
-                builder.append("'").append(s).append("',");
-            }
-            builder.setLength(builder.length() - 1);
-            return builder.toString();
+                @Override
+                public String apply(String input)
+                {
+                    return "'" + input + "'";
+                }
+            });
+            return Joiner.on(",").join(quotedStrings);
         }
         else
         {
@@ -473,7 +461,21 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
         
-        String sqlUsed = reportEditingService.generateReportSQL(report, params, sessionId);
+        String sqlUsed;
+        try
+        {
+            sqlUsed = reportEditingService.generateReportSQL(report, params, sessionId);
+        }
+        catch (SOAPFaultException e)
+        {
+            throw new DataRetrievalException(
+                    String.format(
+                        "unable to generate sql for report %s with %s; details follow:\n%s", 
+                        reportPathConfiguration.value(),
+                        formatParamsAsString(params),
+                        SoapFaults.getDetailsAsString(e.getFault())), 
+                    e);
+        }
 
         operationTimer.stopAndLog("queried for sql");
         return prepareSql(sqlUsed, sortFormula, direction);
@@ -520,6 +522,15 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	{
     		results = xmlViewService.executeSQLQuery(sqlUsed, outputFormat, new XMLQueryExecutionOptions(), sessionId);
     	}
+        catch (SOAPFaultException e)
+        {
+            throw new DataRetrievalException(
+                    String.format(
+                        "unable to query with sql '%s'; details follow:\n%s", 
+                        sqlUsed,
+                        SoapFaults.getDetailsAsString(e.getFault())), 
+                    e);
+        }
     	catch (RuntimeException e)
         {
         	throw new DataRetrievalException(
@@ -571,7 +582,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                         "unable to query report %s with %s; details follow:\n%s", 
                         reportPathConfiguration.value(),
                         formatParamsAsString(reportParams),
-                        getDetailsAsString(e.getFault())), 
+                        SoapFaults.getDetailsAsString(e.getFault())), 
                     e);
         }
         catch (RuntimeException e)
@@ -584,26 +595,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                         e);
         }
         return queryResults;
-    }
-
-	private String getDetailsAsString(SOAPFault fault)
-    {
-        try
-        {
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            transformerFactory.setAttribute("indent-number", 2);
-            Transformer transformer = transformerFactory.newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-            StringWriter writer = new StringWriter();
-            Detail detail = fault.getDetail();
-            transformer.transform(new DOMSource(detail), new StreamResult(writer));
-            return writer.toString();
-        }
-        catch (Exception e)
-        // avoid throwing exceptions if we can, since this code is being run in the context of handling another exception
-        {
-            return "unable to get details due to xslt problem: " + e;
-        }
     }
 
     /**

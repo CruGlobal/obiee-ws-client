@@ -14,7 +14,9 @@ import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.SaiDonationRow.SaiDonationParameters;
 import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerImpl;
 import org.ccci.obiee.client.rowmap.impl.StopwatchOperationTimer;
+import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
+import org.hamcrest.core.CombinableMatcher;
 import org.joda.time.LocalDate;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -113,10 +115,18 @@ public class RowmapIntegrationTest
 
         assertThat(rows, hasSize(greaterThan(0)));
         assertThat(rows, everyItem(
-            Matchers.<SaiDonationRow>hasProperty("transactionDate", 
-                both(greaterThanOrEqualTo(params.donationRangeBegin))
-                .and(lessThanOrEqualTo(params.donationRangeEnd)))));
+            Matchers.<SaiDonationRow>hasProperty("transactionDate", betweenBoundaries(params))));
         printRowsize(rows);
+    }
+
+    private CombinableMatcher<LocalDate> betweenBoundaries(SaiDonationParameters params)
+    {
+        @SuppressWarnings("unchecked") // I don't know how to make the generics compiler happy here
+        Matcher<LocalDate> lowerBound = greaterThanOrEqualTo(params.donationRangeBegin);
+        @SuppressWarnings("unchecked") // I don't know how to make the generics compiler happy here
+        Matcher<LocalDate> upperBound = lessThanOrEqualTo(params.donationRangeEnd);
+        
+        return  both(lowerBound).and(upperBound);
     }
     
     @Test(enabled = false)

@@ -7,11 +7,11 @@ import java.util.regex.Pattern;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.soap.SOAPFaultException;
 
+import org.apache.log4j.Logger;
 import org.ccci.obiee.client.init.AnswersServiceFactory;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
 import org.ccci.obiee.client.rowmap.AnswersConnectionException;
-import org.ccci.obiee.client.rowmap.DataRetrievalException;
 
 import com.siebel.analytics.web.soap.v5.ReportEditingService;
 import com.siebel.analytics.web.soap.v5.ReportEditingServiceSoap;
@@ -40,6 +40,7 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
     
     
     private String endpointBaseUrl;
+    private Logger log = Logger.getLogger(getClass());
     
     public AnalyticsManagerFactoryImpl(SAWSessionService sawSessionService, XmlViewService xmlViewService, ReportEditingService reportEditingService, String username, String password)
     {
@@ -84,6 +85,7 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         {
             throw new AnswersConnectionException(username, e);
         }
+        log.debug("created Answers session " + sessionId);
         
         ConverterStore converterStore = ConverterStore.buildDefault();
         return new AnalyticsManagerImpl(

@@ -2,7 +2,6 @@ package org.ccci.obiee.client.rowmap.impl;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -18,13 +17,6 @@ import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.soap.Detail;
-import javax.xml.soap.SOAPFault;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 import javax.xml.ws.soap.SOAPFaultException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
@@ -32,6 +24,7 @@ import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.DataRetrievalException;
 import org.ccci.obiee.client.rowmap.Query;
@@ -99,6 +92,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     private OperationTimer operationTimer = new NoOpOperationTimer();
     private boolean closed = false;
     
+
+    private Logger log = Logger.getLogger(getClass());
+    
     /**
      * Assumes that the caller has logged us in to OBIEE already.  
      * @param sessionId used to maintain session for various calls
@@ -153,7 +149,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     {
         checkOpen();
         closed = true;
+        log.debug("logging off session " + sessionId);
         sawSessionService.logoff(sessionId);
+        log.debug("logoff successful");
     }
 
     private void checkOpen()

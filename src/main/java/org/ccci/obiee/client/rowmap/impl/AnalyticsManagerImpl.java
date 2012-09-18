@@ -69,6 +69,7 @@ import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
 public class AnalyticsManagerImpl implements AnalyticsManager
 {
 
+    private static final String VALIDATION_REPORT_PATH = "/shared/CCCi/SSW/Rowmap Session Validation Query";
     /**
      * The Answers web service doesn't require you to send the sessionId on every request as long
      * as your web service client maintains cookies.  The jax-ws client can be configured to do this
@@ -736,6 +737,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     @Override
     public void validate()
     {
+        validateAnswersSession();
+        validateBIServerSession();
+    }
+    
+    private void validateAnswersSession()
+    {
         try
         {
             sawSessionService.getCurUser(sessionId);
@@ -745,6 +752,37 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             throw new IllegalStateException("manager is no longer usable", e);
         }
     }
+
+    private void validateBIServerSession()
+    {
+        ReportRef report = new ReportRef();
+        report.setReportPath(VALIDATION_REPORT_PATH);
+        
+        XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA_AND_DATA;
+        XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
+        executionOptions.setMaxRowsPerPage(1);
+        executionOptions.setPresentationInfo(true);
+        ReportParams reportParams = new ReportParams();
+        try
+        {
+        	xmlViewService.executeXMLQuery(
+                report, 
+                outputFormat, 
+                executionOptions, 
+                reportParams, 
+                sessionId);
+        }
+        catch (SOAPFaultException e)
+        {
+            throw new DataRetrievalException(
+                    String.format(
+                        "unable to query report %s; details follow:\n%s", 
+                        VALIDATION_REPORT_PATH,
+                        SoapFaults.getDetailsAsString(e.getFault())), 
+                    e);
+        }
+    }
+
 
     public void setOperationTimer(OperationTimer operationTimer)
     {

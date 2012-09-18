@@ -180,6 +180,15 @@ public class RowmapIntegrationTest
         assertThat(rows.size(), greaterThan(0));
         printRowsize(rows);
     }
+    
+
+    
+    @Test
+    public void testValidate() throws Exception
+    {
+        manager.validate();
+    }
+    
 
     Logger log = Logger.getLogger(RowmapIntegrationTest.class);
     

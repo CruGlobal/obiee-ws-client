@@ -21,10 +21,8 @@ public class AnalyticsManagerPool
         PoolableObjectFactory factory = new AnalyticsManagerObjectFactory(analyticsManagerFactory);
         pool = new GenericObjectPool(factory);
         pool.setMaxActive(50);
-        pool.setMaxIdle(10);
+        pool.setMaxIdle(25);
         pool.setMaxWait(TimeUnit.SECONDS.toMillis(5));
-        pool.setMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(15));
-        pool.setTimeBetweenEvictionRunsMillis(TimeUnit.MINUTES.toMillis(1));
         pool.setTestOnBorrow(true);
     }
 
@@ -63,6 +61,11 @@ public class AnalyticsManagerPool
         {
             log.warn("exception shutting down analytics manager pool; ignoring", e);
         }
+    }
+    
+    public void setMaxIdle(int maxIdle)
+    {
+        pool.setMaxIdle(maxIdle);
     }
     
     public void setMaxActive(int maxActive)

@@ -136,7 +136,7 @@ class RowBuilder<T>
         {
             String nodeName = node.getNodeName();
             Node textChild = node.getChildNodes().item(0);
-            String value = textChild.getNodeValue();
+            String value = textChild == null ? null : textChild.getNodeValue();
             nodeNamesToValues.put(nodeName, value);
         }
         return nodeNamesToValues;

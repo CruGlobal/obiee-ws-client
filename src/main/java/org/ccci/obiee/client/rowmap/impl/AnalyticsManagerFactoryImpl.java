@@ -7,6 +7,10 @@ import java.util.regex.Pattern;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.soap.SOAPFaultException;
 
+import org.apache.cxf.endpoint.Client;
+import org.apache.cxf.frontend.ClientProxy;
+import org.apache.cxf.transport.http.HTTPConduit;
+import org.apache.cxf.transports.http.configuration.HTTPClientPolicy;
 import org.apache.log4j.Logger;
 import org.ccci.obiee.client.init.AnswersServiceFactory;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
@@ -104,7 +108,67 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         bindingProvider.getRequestContext().put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
         
         setEndpointAddressIfNecessary(bindingProvider);
+        
+        setNoChunkedEncodingIfCxf(port);
     }
+
+    private void setNoChunkedEncodingIfCxf(Object port)
+    {
+        if (CxfConfiguration.cxfIsPresent)
+            CxfConfiguration.configurator.setNoChunkedEncoding(port);
+    }
+    
+    static class CxfConfiguration
+    {
+        static final boolean cxfIsPresent;
+        static {
+            cxfIsPresent = checkCxfClientPresent();
+            if (cxfIsPresent) 
+                configurator = new CxfConfigurator();
+        }
+        
+        static CxfConfigurator configurator;
+
+        private static boolean checkCxfClientPresent()
+        {
+            try
+            {
+                Class.forName("org.apache.cxf.frontend.ClientProxy", false, Thread.currentThread().getContextClassLoader());
+                return true;
+            }
+            catch (ClassNotFoundException e)
+            {
+                return false;
+            }
+        }
+    }
+    
+    static class CxfConfigurator
+    {
+        
+        public void setNoChunkedEncoding(Object port)
+        {
+
+            Client client;
+            try
+            {
+                client = ClientProxy.getClient(port);
+            }
+            catch (ClassCastException e)
+            {
+                return;
+            }
+            
+            HTTPConduit conduit = (HTTPConduit) client.getConduit();
+            HTTPClientPolicy policy = new HTTPClientPolicy();
+            /*
+             * Chunking is not handled, for some reason, by Answer's soap service
+             */
+            policy.setAllowChunking(false);
+            conduit.setClient(policy);
+        }
+    }
+    
 
     private void setEndpointAddressIfNecessary(BindingProvider bindingProvider) throws AssertionError
     {

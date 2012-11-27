@@ -14,7 +14,8 @@ public class AnswersConnectionException extends RuntimeException
         super(String.format(
                 "unable to connect to Answers with username %s; details follow:\n%s",
                 username,
-                SoapFaults.getDetailsAsString(e.getFault())));
+                SoapFaults.getDetailsAsString(e.getFault())),
+             e);
     }
 
 }

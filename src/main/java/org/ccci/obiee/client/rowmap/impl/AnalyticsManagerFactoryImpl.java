@@ -103,20 +103,30 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
     private void configurePort(Object port)
     {
         BindingProvider bindingProvider = (BindingProvider) port;
-        bindingProvider.getRequestContext().put(BindingProviderProperties.CONNECT_TIMEOUT, connectTimeout);
-        bindingProvider.getRequestContext().put(BindingProviderProperties.REQUEST_TIMEOUT, readTimeout);
         bindingProvider.getRequestContext().put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
-        
         setEndpointAddressIfNecessary(bindingProvider);
+
+        setSunJaxWsProperties(bindingProvider);
         
-        setNoChunkedEncodingIfCxf(port);
+        setCxfProperties(port);
     }
 
-    private void setNoChunkedEncodingIfCxf(Object port)
+    private void setSunJaxWsProperties(BindingProvider bindingProvider)
     {
-        if (CxfConfiguration.cxfIsPresent)
-            CxfConfiguration.configurator.setNoChunkedEncoding(port);
+        bindingProvider.getRequestContext().put(BindingProviderProperties.CONNECT_TIMEOUT, connectTimeout);
+        bindingProvider.getRequestContext().put(BindingProviderProperties.REQUEST_TIMEOUT, readTimeout);
     }
+
+    private void setCxfProperties(Object port)
+    {
+        if (CxfConfiguration.cxfIsPresent && CxfConfiguration.configurator.isCxfPort(port))
+        {
+            CxfConfiguration.configurator.setNoChunkedEncoding(port);
+            CxfConfiguration.configurator.setConnectTimeout(port, connectTimeout);
+            CxfConfiguration.configurator.setReadTimeout(port, readTimeout);
+        }
+    }
+
     
     static class CxfConfiguration
     {
@@ -145,10 +155,39 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
     
     static class CxfConfigurator
     {
+
+        public boolean isCxfPort(Object port)
+        {
+            return getClientPolicy(port) != null;
+        }
         
+        /*
+         * Chunked transfer encoding is not handled, for some reason, by Answer's soap service
+         */
         public void setNoChunkedEncoding(Object port)
         {
+            HTTPClientPolicy clientPolicy = getClientPolicy(port);
+            clientPolicy.setAllowChunking(false);
+        }
 
+        public void setReadTimeout(Object port, int readTimeout)
+        {
+            HTTPClientPolicy clientPolicy = getClientPolicy(port);
+            clientPolicy.setReceiveTimeout(readTimeout);
+        }
+
+        public void setConnectTimeout(Object port, int connectTimeout)
+        {
+            HTTPClientPolicy clientPolicy = getClientPolicy(port);
+            clientPolicy.setConnectionTimeout(connectTimeout);
+        }
+
+        /**
+         * returns the {@link HTTPClientPolicy} associate with this port if it's
+         * a CXF port; otherwise; returns null.
+         */
+        private HTTPClientPolicy getClientPolicy(Object port)
+        {
             Client client;
             try
             {
@@ -156,16 +195,15 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
             }
             catch (ClassCastException e)
             {
-                return;
+                return null;
             }
             
             HTTPConduit conduit = (HTTPConduit) client.getConduit();
-            HTTPClientPolicy policy = new HTTPClientPolicy();
-            /*
-             * Chunking is not handled, for some reason, by Answer's soap service
-             */
-            policy.setAllowChunking(false);
-            conduit.setClient(policy);
+            HTTPClientPolicy clientPolicy = conduit.getClient();
+            if (clientPolicy == null)
+                clientPolicy = new HTTPClientPolicy();
+            conduit.setClient(clientPolicy);
+            return clientPolicy;
         }
     }
     

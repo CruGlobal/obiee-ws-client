@@ -11,12 +11,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.XMLConstants;
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.ws.BindingProvider;
 import javax.xml.ws.soap.SOAPFaultException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
@@ -787,6 +789,21 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     public void setOperationTimer(OperationTimer operationTimer)
     {
         this.operationTimer = operationTimer;
+    }
+    
+
+    public void setQueryTimeout(long time, TimeUnit unit)
+    {
+        int readTimeout = (int) unit.toMillis(time);
+        setReadTimeout(sawSessionService, readTimeout);
+        setReadTimeout(xmlViewService, readTimeout);
+        setReadTimeout(reportEditingService, readTimeout);
+    }
+
+    private void setReadTimeout(Object port, int readTimeout)
+    {
+        PortConfigurer portConfigurer = new PortConfigurer((BindingProvider) port);
+        portConfigurer.setReadTimeout(readTimeout);
     }
     
     

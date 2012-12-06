@@ -7,10 +7,6 @@ import java.util.regex.Pattern;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.soap.SOAPFaultException;
 
-import org.apache.cxf.endpoint.Client;
-import org.apache.cxf.frontend.ClientProxy;
-import org.apache.cxf.transport.http.HTTPConduit;
-import org.apache.cxf.transports.http.configuration.HTTPClientPolicy;
 import org.apache.log4j.Logger;
 import org.ccci.obiee.client.init.AnswersServiceFactory;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
@@ -23,7 +19,6 @@ import com.siebel.analytics.web.soap.v5.SAWSessionService;
 import com.siebel.analytics.web.soap.v5.SAWSessionServiceSoap;
 import com.siebel.analytics.web.soap.v5.XmlViewService;
 import com.siebel.analytics.web.soap.v5.XmlViewServiceSoap;
-import com.sun.xml.ws.client.BindingProviderProperties;
 
 public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
 {
@@ -106,107 +101,10 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         bindingProvider.getRequestContext().put(BindingProvider.SESSION_MAINTAIN_PROPERTY, true);
         setEndpointAddressIfNecessary(bindingProvider);
 
-        setSunJaxWsProperties(bindingProvider);
-        
-        setCxfProperties(port);
+        PortConfigurer portConfigurer = new PortConfigurer(bindingProvider);
+        portConfigurer.setDefaults();
+        portConfigurer.setTimeouts(connectTimeout, readTimeout);
     }
-
-    private void setSunJaxWsProperties(BindingProvider bindingProvider)
-    {
-        bindingProvider.getRequestContext().put(BindingProviderProperties.CONNECT_TIMEOUT, connectTimeout);
-        bindingProvider.getRequestContext().put(BindingProviderProperties.REQUEST_TIMEOUT, readTimeout);
-    }
-
-    private void setCxfProperties(Object port)
-    {
-        if (CxfConfiguration.cxfIsPresent && CxfConfiguration.configurator.isCxfPort(port))
-        {
-            CxfConfiguration.configurator.setNoChunkedEncoding(port);
-            CxfConfiguration.configurator.setConnectTimeout(port, connectTimeout);
-            CxfConfiguration.configurator.setReadTimeout(port, readTimeout);
-        }
-    }
-
-    
-    static class CxfConfiguration
-    {
-        static final boolean cxfIsPresent;
-        static {
-            cxfIsPresent = checkCxfClientPresent();
-            if (cxfIsPresent) 
-                configurator = new CxfConfigurator();
-        }
-        
-        static CxfConfigurator configurator;
-
-        private static boolean checkCxfClientPresent()
-        {
-            try
-            {
-                Class.forName("org.apache.cxf.frontend.ClientProxy", false, Thread.currentThread().getContextClassLoader());
-                return true;
-            }
-            catch (ClassNotFoundException e)
-            {
-                return false;
-            }
-        }
-    }
-    
-    static class CxfConfigurator
-    {
-
-        public boolean isCxfPort(Object port)
-        {
-            return getClientPolicy(port) != null;
-        }
-        
-        /*
-         * Chunked transfer encoding is not handled, for some reason, by Answer's soap service
-         */
-        public void setNoChunkedEncoding(Object port)
-        {
-            HTTPClientPolicy clientPolicy = getClientPolicy(port);
-            clientPolicy.setAllowChunking(false);
-        }
-
-        public void setReadTimeout(Object port, int readTimeout)
-        {
-            HTTPClientPolicy clientPolicy = getClientPolicy(port);
-            clientPolicy.setReceiveTimeout(readTimeout);
-        }
-
-        public void setConnectTimeout(Object port, int connectTimeout)
-        {
-            HTTPClientPolicy clientPolicy = getClientPolicy(port);
-            clientPolicy.setConnectionTimeout(connectTimeout);
-        }
-
-        /**
-         * returns the {@link HTTPClientPolicy} associate with this port if it's
-         * a CXF port; otherwise; returns null.
-         */
-        private HTTPClientPolicy getClientPolicy(Object port)
-        {
-            Client client;
-            try
-            {
-                client = ClientProxy.getClient(port);
-            }
-            catch (ClassCastException e)
-            {
-                return null;
-            }
-            
-            HTTPConduit conduit = (HTTPConduit) client.getConduit();
-            HTTPClientPolicy clientPolicy = conduit.getClient();
-            if (clientPolicy == null)
-                clientPolicy = new HTTPClientPolicy();
-            conduit.setClient(clientPolicy);
-            return clientPolicy;
-        }
-    }
-    
 
     private void setEndpointAddressIfNecessary(BindingProvider bindingProvider) throws AssertionError
     {

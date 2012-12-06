@@ -1,5 +1,7 @@
 package org.ccci.obiee.client.rowmap;
 
+import java.util.concurrent.TimeUnit;
+
 
 /**
  * The main API point for querying the Analytics system.
@@ -34,4 +36,11 @@ public interface AnalyticsManager
      */
     void validate();
 
+    /**
+     * Sets the default query timeout to be used for queries created by this AnalyticsManager.
+     * 
+     * @param time the maximum time to wait for a query to execute before throwing an exception
+     * @param unit the time unit of the {@code time} argument
+     */
+    public void setQueryTimeout(long time, TimeUnit unit);
 }

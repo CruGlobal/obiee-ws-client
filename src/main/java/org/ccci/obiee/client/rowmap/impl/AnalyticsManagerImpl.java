@@ -94,6 +94,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     
     private OperationTimer operationTimer = new NoOpOperationTimer();
     private boolean closed = false;
+    private Exception recentException = null;
     
 
     private Logger log = Logger.getLogger(getClass());
@@ -469,6 +470,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (SOAPFaultException e)
         {
+            recentException = e;
             throw new DataRetrievalException(
                     String.format(
                         "unable to generate sql for report %s with %s; details follow:\n%s", 
@@ -525,6 +527,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	}
         catch (SOAPFaultException e)
         {
+            recentException = e;
             throw new DataRetrievalException(
                     String.format(
                         "unable to query with sql '%s'; details follow:\n%s", 
@@ -534,6 +537,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
     	catch (RuntimeException e)
         {
+    	    recentException = e;
         	throw new DataRetrievalException(
         			String.format("unable to query with sql: ", sqlUsed), e);
         }
@@ -578,6 +582,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (SOAPFaultException e)
         {
+            recentException = e;
             throw new DataRetrievalException(
                     String.format(
                         "unable to query report %s with %s; details follow:\n%s", 
@@ -588,6 +593,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (RuntimeException e)
         {
+            recentException = e;
             throw new DataRetrievalException(
                 String.format(
                     "unable to query report %s with %s", 
@@ -657,6 +663,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (SAXParseException e)
         {
+            recentException = e;
             throw new DataRetrievalException(
                 String.format(
                     "cannot parse rowset from OBIEE; error on line %s and column %s", 
@@ -666,10 +673,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (SAXException e)
         {
+            recentException = e;
             throw new DataRetrievalException("cannot parse rowset from OBIEE", e);
         }
         catch (IOException e)
         {
+            recentException = e;
             throw new DataRetrievalException("cannot parse rowset from OBIEE", e);
         }
     }
@@ -690,6 +699,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (XPathExpressionException e)
         {
+            recentException = e;
             throw new RuntimeException("unable to evaluate xpath expression on document", e);
         }
     }
@@ -710,6 +720,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (XPathExpressionException e)
         {
+            recentException = e;
             throw new RuntimeException("unable to evaluate xpath expression on document", e);
         }
     }
@@ -739,10 +750,24 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     @Override
     public void validate()
     {
+        checkOpen();
+        validateNoRecentErrors();
         validateAnswersSession();
         validateBIServerSession();
     }
     
+    private void validateNoRecentErrors()
+    {
+        if (recentException != null)
+        {
+            throw new IllegalStateException(
+                "a recent exception has occurred.  Because it appears that long-running " +
+                "Obiee Answers sessions can sometimes experience unsual errors, this session has been " +
+                "closed due to the following recent exception:",
+                recentException);
+        }
+    }
+
     private void validateAnswersSession()
     {
         try

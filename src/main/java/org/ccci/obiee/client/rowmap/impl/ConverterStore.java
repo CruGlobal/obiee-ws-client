@@ -8,6 +8,7 @@ import java.util.Map;
 import org.ccci.obiee.client.rowmap.Converter;
 import org.ccci.obiee.client.rowmap.annotation.Scale;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
@@ -109,7 +110,9 @@ public class ConverterStore
         
         converterStore.addConverter(DateTime.class, new Converter<DateTime>()
             {
-                DateTimeFormatter isoFormatter = ISODateTimeFormat.dateHourMinuteSecond();
+                DateTimeFormatter isoFormatter = 
+                    ISODateTimeFormat.dateHourMinuteSecond()
+                        .withZone(DateTimeZone.UTC);
                 
                 public DateTime convert(String xmlValue, Field field)
                 {

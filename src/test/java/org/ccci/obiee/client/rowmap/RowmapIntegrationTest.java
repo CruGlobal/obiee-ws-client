@@ -1,7 +1,6 @@
     package org.ccci.obiee.client.rowmap;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.both;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -122,11 +121,11 @@ public class RowmapIntegrationTest
     private CombinableMatcher<LocalDate> betweenBoundaries(SaiDonationParameters params)
     {
         @SuppressWarnings("unchecked") // I don't know how to make the generics compiler happy here
-        Matcher<LocalDate> lowerBound = greaterThanOrEqualTo(params.donationRangeBegin);
+        Matcher<LocalDate> lowerBound = (Matcher<LocalDate>) greaterThanOrEqualTo(params.donationRangeBegin);
         @SuppressWarnings("unchecked") // I don't know how to make the generics compiler happy here
-        Matcher<LocalDate> upperBound = lessThanOrEqualTo(params.donationRangeEnd);
+        Matcher<LocalDate> upperBound = (Matcher<LocalDate>) lessThanOrEqualTo(params.donationRangeEnd);
         
-        return  both(lowerBound).and(upperBound);
+        return  Matchers.<LocalDate>both(lowerBound).and(upperBound);
     }
     
     @Test(enabled = false)

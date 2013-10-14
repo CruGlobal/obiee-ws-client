@@ -37,29 +37,14 @@
               <target>2.1</target>
               <wsdlDirectory>src/main/resources/wsdl</wsdlDirectory>
               <wsdlFiles>
-                <!-- This is a slightly modified copy of https://insightstage.ccci.org/Analytics/saw.dll?WSDL
-                It has been modified in two ways:
-                 1)  the endpoint urls have been changed to 'https' instead of 'http'; the jax-ws client can't handle
-                   the loadbalancer's 302 redirect from http to https urls, and all of the links in the Answers-published wsdl 
-                   currently are http urls (it doesn't realize it has an https proxy in front, because WebLogic hasn't been configured
-                   accordingly)
-                 2) the <wsdl:import> element has been replaced by a <wsdl:types> element with an <xsd:import>.  Not sure
-                   why the published Answers wsdl screws this up.
-                  -->
+                <!-- This is an unmodified copy of http://slobiw02.ccci.org:7777/analytics/saw.dll?wsdl -->
                 <wsdlFile>siebel-analytics-web.wsdl</wsdlFile>
               </wsdlFiles>
                 <!-- 
-                This isn't actually useful; there isn't a classpath URL handler.  But specifying 
-                https://insightstage.ccci.org/Analytics/saw.dll?WSDL isn't helpful, really, because that
-                published wsdl is unusable by jax-ws for the reasons mentioned above.
+                This isn't actually useful; there isn't a classpath URL handler.
+                TODO: should we keep this configuration?
                 -->
               <wsdlLocation>/wsdl/siebel-analytics-web.wsdl</wsdlLocation>
-              <args>
-               <param>-b</param>
-               <param>src/main/resources/jaxws-bindings.xml</param>
-               <param>-b</param>
-               <param>src/main/resources/jaxb-bindings.xml</param>
-              </args>
             </configuration>
           </execution>
         </executions>

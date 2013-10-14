@@ -13,12 +13,12 @@ import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
 import org.ccci.obiee.client.rowmap.AnswersConnectionException;
 
-import com.siebel.analytics.web.soap.v5.ReportEditingService;
-import com.siebel.analytics.web.soap.v5.ReportEditingServiceSoap;
-import com.siebel.analytics.web.soap.v5.SAWSessionService;
-import com.siebel.analytics.web.soap.v5.SAWSessionServiceSoap;
-import com.siebel.analytics.web.soap.v5.XmlViewService;
-import com.siebel.analytics.web.soap.v5.XmlViewServiceSoap;
+import oracle.bi.web.soap.ReportEditingService;
+import oracle.bi.web.soap.ReportEditingServiceSoap;
+import oracle.bi.web.soap.SAWSessionService;
+import oracle.bi.web.soap.SAWSessionServiceSoap;
+import oracle.bi.web.soap.XmlViewService;
+import oracle.bi.web.soap.XmlViewServiceSoap;
 
 public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
 {

@@ -52,15 +52,15 @@ import org.xml.sax.SAXParseException;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
-import com.siebel.analytics.web.soap.v5.ReportEditingServiceSoap;
-import com.siebel.analytics.web.soap.v5.SAWSessionServiceSoap;
-import com.siebel.analytics.web.soap.v5.XmlViewServiceSoap;
-import com.siebel.analytics.web.soap.v5.model.QueryResults;
-import com.siebel.analytics.web.soap.v5.model.ReportParams;
-import com.siebel.analytics.web.soap.v5.model.ReportRef;
-import com.siebel.analytics.web.soap.v5.model.Variable;
-import com.siebel.analytics.web.soap.v5.model.XMLQueryExecutionOptions;
-import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
+import oracle.bi.web.soap.ReportEditingServiceSoap;
+import oracle.bi.web.soap.SAWSessionServiceSoap;
+import oracle.bi.web.soap.XmlViewServiceSoap;
+import oracle.bi.web.soap.QueryResults;
+import oracle.bi.web.soap.ReportParams;
+import oracle.bi.web.soap.ReportRef;
+import oracle.bi.web.soap.Variable;
+import oracle.bi.web.soap.XMLQueryExecutionOptions;
+import oracle.bi.web.soap.XMLQueryOutputFormat;
 
 /**
  * 

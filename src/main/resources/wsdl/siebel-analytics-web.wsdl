@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
-<wsdl:definitions xmlns:sawsoap="urn://oracle.bi.webservices/v6" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn://oracle.bi.webservices/v6">
+<wsdl:definitions xmlns:sawsoap="urn://oracle.bi.webservices/v7" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn://oracle.bi.webservices/v7">
 <wsdl:types>
-<xsd:schema xmlns:jxb="http://java.sun.com/xml/ns/jaxb" elementFormDefault="qualified" jxb:version="1.0" targetNamespace="urn://oracle.bi.webservices/v6" version="1.0">
+<xsd:schema xmlns:jxb="http://java.sun.com/xml/ns/jaxb" elementFormDefault="qualified" jxb:version="1.0" targetNamespace="urn://oracle.bi.webservices/v7" version="1.0">
 <xsd:annotation>
 <xsd:appinfo>
 <jxb:schemaBindings>
@@ -26,6 +26,7 @@
 <xsd:complexType name="SAWSessionParameters">
 <xsd:sequence>
 <xsd:element name="locale" nillable="true" type="sawsoap:SAWLocale"/>
+<xsd:element name="language" nillable="true" type="sawsoap:SAWLocale"/>
 <xsd:element name="userAgent" nillable="true" type="xsd:string"/>
 <xsd:element name="asyncLogon" type="xsd:boolean"/>
 <xsd:element maxOccurs="unbounded" minOccurs="0" name="logonParams" nillable="true" type="sawsoap:LogonParameter"/>
@@ -92,6 +93,7 @@
 <xsd:element maxOccurs="1" minOccurs="0" name="name" type="xsd:string"/>
 <xsd:element name="accountType" type="xsd:int"/>
 <xsd:element maxOccurs="1" minOccurs="0" name="guid" type="xsd:string"/>
+<xsd:element maxOccurs="1" minOccurs="0" name="displayName" type="xsd:string"/>
 </xsd:sequence>
 </xsd:complexType>
 <xsd:complexType name="AccessControlToken">
@@ -155,6 +157,7 @@
 <xsd:element name="path" type="xsd:string"/>
 <xsd:element name="type" type="sawsoap:ItemInfoType"/>
 <xsd:element maxOccurs="1" minOccurs="0" name="caption" type="xsd:string"/>
+<xsd:element maxOccurs="1" minOccurs="0" name="description" type="xsd:string"/>
 <xsd:element maxOccurs="1" minOccurs="0" name="attributes" type="xsd:int"/>
 <xsd:element maxOccurs="1" minOccurs="0" name="lastModified" type="xsd:dateTime"/>
 <xsd:element maxOccurs="1" minOccurs="0" name="created" type="xsd:dateTime"/>
@@ -178,6 +181,9 @@
 <xsd:sequence>
 <xsd:element name="userName" type="xsd:string"/>
 <xsd:element name="homeDirectory" type="sawsoap:ItemInfo"/>
+<xsd:element minOccurs="0" name="locale" type="sawsoap:SAWLocale"/>
+<xsd:element minOccurs="0" name="language" type="sawsoap:SAWLocale"/>
+<xsd:element minOccurs="0" name="timezoneid" type="xsd:string"/>
 <xsd:element maxOccurs="unbounded" minOccurs="0" name="sharedDirectories" type="sawsoap:ItemInfo"/>
 </xsd:sequence>
 </xsd:complexType>
@@ -273,7 +279,7 @@
                    NQ_SESSION.USERGUID,
                    NQ_SESSION.GROUP,
                    NQ_SESSION.GROUPGUIDS,
-                   NQ_SESSION.WEBGROUPS, 
+                   NQ_SESSION.WEBGROUPS,
                    NQ_SESSION.REALM,
                    NQ_SESSION.REALMGUID,
                    NQ_SESSION.TOKENS,
@@ -301,6 +307,26 @@
 </xsd:complexType>
 </xsd:element>
 <xsd:element name="getSessionVariablesResult">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element maxOccurs="unbounded" minOccurs="0" name="return" nillable="true" type="xsd:string"/>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="getBIPSVariables">
+<xsd:complexType>
+<xsd:annotation>
+<xsd:documentation>Access BIPS variables using expression syntax. BIS variables can be retrieved using this method with the expression like
+		biServer.variables['NQ_SESSION.USER']
+                </xsd:documentation>
+</xsd:annotation>
+<xsd:sequence>
+<xsd:element maxOccurs="unbounded" minOccurs="0" name="names" nillable="true" type="xsd:string"/>
+<xsd:element name="sessionID" nillable="true" type="xsd:string"/>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="getBIPSVariablesResult">
 <xsd:complexType>
 <xsd:sequence>
 <xsd:element maxOccurs="unbounded" minOccurs="0" name="return" nillable="true" type="xsd:string"/>
@@ -504,6 +530,7 @@
 <xsd:element name="withPermissionMask" type="xsd:int"/>
 <xsd:element name="withAttributes" type="xsd:int"/>
 <xsd:element name="withAttributesMask" type="xsd:int"/>
+<xsd:element name="preserveOriginalLinkPath" type="xsd:boolean"/>
 </xsd:sequence>
 </xsd:complexType>
 <xsd:element name="getSubItems">
@@ -986,6 +1013,21 @@
 </xsd:sequence>
 </xsd:complexType>
 </xsd:element>
+<xsd:element name="getAccountTenantID">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="account" type="sawsoap:Account"/>
+<xsd:element name="sessionID" nillable="true" type="xsd:string"/>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
+<xsd:element name="getAccountTenantIDResult">
+<xsd:complexType>
+<xsd:sequence>
+<xsd:element name="return" type="xsd:string"/>
+</xsd:sequence>
+</xsd:complexType>
+</xsd:element>
 <xsd:element name="evaluateCondition">
 <xsd:complexType>
 <xsd:sequence>
@@ -1147,7 +1189,7 @@
 <xsd:element name="setBridge">
 <xsd:complexType>
 <xsd:sequence>
-<xsd:element name="bridge" type="xsd:string"/>
+<xsd:element name="bridge" nillable="true" type="xsd:string"/>
 <xsd:element name="sessionID" nillable="true" type="xsd:string"/>
 </xsd:sequence>
 </xsd:complexType>
@@ -1592,6 +1634,7 @@
 <xsd:element name="dataType" type="xsd:string"/>
 <xsd:element name="aggregatable" type="xsd:boolean"/>
 <xsd:element name="aggrRule" nillable="false" type="xsd:string"/>
+<xsd:element default="false" name="hidden" type="xsd:boolean"/>
 </xsd:sequence>
 </xsd:complexType>
 <xsd:complexType name="SATable">
@@ -1600,6 +1643,8 @@
 <xsd:element name="displayName" type="xsd:string"/>
 <xsd:element name="description" type="xsd:string"/>
 <xsd:element maxOccurs="unbounded" minOccurs="0" name="columns" nillable="true" type="sawsoap:SAColumn"/>
+<xsd:element default="false" name="hidden" type="xsd:boolean"/>
+<xsd:element minOccurs="0" name="parentTableName" type="xsd:string"/>
 </xsd:sequence>
 </xsd:complexType>
 <xsd:complexType name="SASubjectArea">
@@ -1608,6 +1653,7 @@
 <xsd:element name="displayName" type="xsd:string"/>
 <xsd:element name="description" type="xsd:string"/>
 <xsd:element maxOccurs="unbounded" minOccurs="0" name="tables" nillable="true" type="sawsoap:SATable"/>
+<xsd:element default="false" name="hidden" type="xsd:boolean"/>
 </xsd:sequence>
 </xsd:complexType>
 <xsd:element name="clearQueryCache">
@@ -1894,6 +1940,12 @@
 <wsdl:message name="getSessionVariablesOut">
 <wsdl:part element="sawsoap:getSessionVariablesResult" name="parameters"/>
 </wsdl:message>
+<wsdl:message name="getBIPSVariablesIn">
+<wsdl:part element="sawsoap:getBIPSVariables" name="parameters"/>
+</wsdl:message>
+<wsdl:message name="getBIPSVariablesOut">
+<wsdl:part element="sawsoap:getBIPSVariablesResult" name="parameters"/>
+</wsdl:message>
 <wsdl:message name="impersonateIn">
 <wsdl:part element="sawsoap:impersonate" name="parameters"/>
 </wsdl:message>
@@ -1961,6 +2013,13 @@
         </wsdl:documentation>
 <wsdl:input message="sawsoap:getSessionVariablesIn"/>
 <wsdl:output message="sawsoap:getSessionVariablesOut"/>
+</wsdl:operation>
+<wsdl:operation name="getBIPSVariables">
+<wsdl:documentation>
+Access BIPS variables using expression syntax. BIS variables can be retrieved using this method with the expression like biServer.variables['NQ_SESSION.USER']
+        </wsdl:documentation>
+<wsdl:input message="sawsoap:getBIPSVariablesIn"/>
+<wsdl:output message="sawsoap:getBIPSVariablesOut"/>
 </wsdl:operation>
 <wsdl:operation name="impersonate">
 <wsdl:input message="sawsoap:impersonateIn"/>
@@ -2036,6 +2095,15 @@
 <soap:body use="literal"/>
 </wsdl:output>
 </wsdl:operation>
+<wsdl:operation name="getBIPSVariables">
+<soap:operation soapAction="#getBIPSVariables" style="document"/>
+<wsdl:input>
+<soap:body use="literal"/>
+</wsdl:input>
+<wsdl:output>
+<soap:body use="literal"/>
+</wsdl:output>
+</wsdl:operation>
 <wsdl:operation name="impersonate">
 <soap:operation soapAction="#impersonate" style="document"/>
 <wsdl:input>
@@ -2057,7 +2125,7 @@
 </wsdl:binding>
 <wsdl:service name="SAWSessionService">
 <wsdl:port binding="sawsoap:SAWSessionService" name="SAWSessionServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=nQSessionService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=nQSessionService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="deleteItemIn">
@@ -2390,7 +2458,7 @@
 </wsdl:binding>
 <wsdl:service name="WebCatalogService">
 <wsdl:port binding="sawsoap:WebCatalogService" name="WebCatalogServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=webCatalogService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=webCatalogService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="executeXMLQueryIn">
@@ -2514,7 +2582,7 @@
 </wsdl:binding>
 <wsdl:service name="XmlViewService">
 <wsdl:port binding="sawsoap:XmlViewService" name="XmlViewServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=xmlViewService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=xmlViewService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="getGlobalPrivilegesIn">
@@ -2595,6 +2663,12 @@
 <wsdl:message name="getAccountsOut">
 <wsdl:part element="sawsoap:getAccountsResult" name="parameters"/>
 </wsdl:message>
+<wsdl:message name="getAccountTenantIDIn">
+<wsdl:part element="sawsoap:getAccountTenantID" name="parameters"/>
+</wsdl:message>
+<wsdl:message name="getAccountTenantIDOut">
+<wsdl:part element="sawsoap:getAccountTenantIDResult" name="parameters"/>
+</wsdl:message>
 <wsdl:portType name="SecurityServiceSoap">
 <wsdl:operation name="getGlobalPrivileges">
 <wsdl:input message="sawsoap:getGlobalPrivilegesIn"/>
@@ -2647,6 +2721,10 @@
 <wsdl:operation name="getAccounts">
 <wsdl:input message="sawsoap:getAccountsIn"/>
 <wsdl:output message="sawsoap:getAccountsOut"/>
+</wsdl:operation>
+<wsdl:operation name="getAccountTenantID">
+<wsdl:input message="sawsoap:getAccountTenantIDIn"/>
+<wsdl:output message="sawsoap:getAccountTenantIDOut"/>
 </wsdl:operation>
 </wsdl:portType>
 <wsdl:binding name="SecurityService" type="sawsoap:SecurityServiceSoap">
@@ -2768,10 +2846,19 @@
 <soap:body use="literal"/>
 </wsdl:output>
 </wsdl:operation>
+<wsdl:operation name="getAccountTenantID">
+<soap:operation soapAction="#getAccountTenantID" style="document"/>
+<wsdl:input>
+<soap:body use="literal"/>
+</wsdl:input>
+<wsdl:output>
+<soap:body use="literal"/>
+</wsdl:output>
+</wsdl:operation>
 </wsdl:binding>
 <wsdl:service name="SecurityService">
 <wsdl:port binding="sawsoap:SecurityService" name="SecurityServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=securityService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=securityService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="evaluateConditionIn">
@@ -2838,7 +2925,7 @@
 </wsdl:binding>
 <wsdl:service name="ConditionService">
 <wsdl:port binding="sawsoap:ConditionService" name="ConditionServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=conditionService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=conditionService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="startPageIn">
@@ -3000,7 +3087,7 @@
 </wsdl:binding>
 <wsdl:service name="HtmlViewService">
 <wsdl:port binding="sawsoap:HtmlViewService" name="HtmlViewService">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=htmlViewService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=htmlViewService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="executeIBotNowIn">
@@ -3143,7 +3230,7 @@
 </wsdl:binding>
 <wsdl:service name="IBotService">
 <wsdl:port binding="sawsoap:IBotService" name="IBotServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=ibotService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=ibotService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="writeListFilesIn">
@@ -3324,7 +3411,7 @@
 </wsdl:binding>
 <wsdl:service name="JobManagementService">
 <wsdl:port binding="sawsoap:JobManagementService" name="JobManagementServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=jobManagementService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=jobManagementService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="clearQueryCacheIn">
@@ -3429,7 +3516,7 @@
 </wsdl:binding>
 <wsdl:service name="MetadataService">
 <wsdl:port binding="sawsoap:MetadataService" name="MetadataServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=metadataService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=metadataService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="exportIn">
@@ -3520,7 +3607,7 @@
 </wsdl:binding>
 <wsdl:service name="ReplicationService">
 <wsdl:port binding="sawsoap:ReplicationService" name="ReplicationServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=replicationService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=replicationService"/>
 </wsdl:port>
 </wsdl:service>
 <wsdl:message name="applyReportParamsIn">
@@ -3587,7 +3674,7 @@
 </wsdl:binding>
 <wsdl:service name="ReportEditingService">
 <wsdl:port binding="sawsoap:ReportEditingService" name="ReportEditingServiceSoap">
-<soap:address location="http://slobiw02.ccci.org:7777/analytics/saw.dll?SoapImpl=reportService"/>
+<soap:address location="http://slobiw02.ccci.org:7777/analytics-ws/saw.dll?SoapImpl=reportService"/>
 </wsdl:port>
 </wsdl:service>
 </wsdl:definitions>

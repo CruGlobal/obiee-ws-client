@@ -3,7 +3,7 @@
   <groupId>org.ccci</groupId>
   <artifactId>obiee-ws-client</artifactId>
   <name>OBIEE Web Service Client</name>
-  <version>1-SNAPSHOT</version>
+  <version>obiee-11g-upgrade-SNAPSHOT</version>
   <description>A client library generated from the wsdl of CCCI's OBIEE instance </description>
   
   <parent>

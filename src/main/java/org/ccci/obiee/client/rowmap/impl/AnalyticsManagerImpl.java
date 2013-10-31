@@ -624,7 +624,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 			return sqlUsed;
 		}
 		
-		int index = sqlUsed.indexOf(" ORDER BY");
+		int index = sqlUsed.indexOf("ORDER BY") - 1;
+		if(index < 0)
+		{
+			index = sqlUsed.indexOf(" ORDER BY");
+		}
 		sqlUsed = sqlUsed.substring(0,index);
 		return sqlUsed;
 	}

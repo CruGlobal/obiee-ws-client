@@ -175,7 +175,7 @@ public class RowmapIntegrationTest
         printRowsize(rows);
     }
     
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testSortByAmountAndDesigParam() throws Exception
     {
     	SortDirection direction = SortDirection.ASCENDING;
@@ -184,13 +184,18 @@ public class RowmapIntegrationTest
         
         Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
-        query.orderBy(SaiDonationRow.report.getColumn("amount"), direction);
+        query.orderBy(SaiDonationRow.report.getColumn("transactionAmount"), direction);
     	List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
+        SaiDonationRow previous = null;
+        for (SaiDonationRow row : rows) {
+            if (previous != null)
+                assertThat(row.getTransactionAmount(), greaterThanOrEqualTo(previous.getTransactionAmount()));
+            previous = row;
+        }
         printRowsize(rows);
     }
-    
 
 
     @Test(enabled = true)

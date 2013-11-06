@@ -101,6 +101,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     private XPathExpression xsdElementExpression;
     private XPathExpression rowExpression;
     private XPathExpression columnOrderExpression;
+    private XPathExpression criteriaExpression;
 
     private final DocumentBuilder builder;
     private final ConverterStore converterStore;
@@ -157,6 +158,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             xsdElementExpression = xpath.compile("/rowset:rowset/xsd:schema/xsd:complexType[@name='Row']/xsd:sequence/xsd:element");
             rowExpression = xpath.compile("/rowset:rowset/rowset:Row");
             columnOrderExpression = xpath.compile("/saw:report/saw:criteria/saw:columnOrder");
+            criteriaExpression = xpath.compile("/saw:report/saw:criteria");
         }
         catch (XPathExpressionException e)
         {
@@ -664,9 +666,17 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     void replaceColumnOrderChildren(String sortColumnId, SortDirection sortDirection, Document reportDoc) {
         NodeList list = searchForColumnOrder(reportDoc);
 
+        Node columnOrder;
         if (list.getLength() == 0)
-            throw new RuntimeException("unable to find <saw:columnOrder>");
-        Node columnOrder = list.item(0);
+        {
+            Node criteriaNode = searchForCriteriaNode(reportDoc);
+            columnOrder = reportDoc.createElementNS(SAW_URI, "saw:columnOrder");
+            criteriaNode.appendChild(columnOrder);
+        }
+        else
+        {
+            columnOrder = list.item(0);
+        }
 
         for (Node child : Doms.each(columnOrder.getChildNodes()))
         {
@@ -681,16 +691,25 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     }
 
     private NodeList searchForColumnOrder(Document reportDoc) {
-        NodeList list;
         try
         {
-            list = (NodeList) columnOrderExpression.evaluate(reportDoc, XPathConstants.NODESET);
+            return (NodeList) columnOrderExpression.evaluate(reportDoc, XPathConstants.NODESET);
         }
         catch (XPathExpressionException e)
         {
             throw new RuntimeException("unable to evaluate xpath expression on document", e);
         }
-        return list;
+    }
+
+    private Node searchForCriteriaNode(Document reportDoc) {
+        try
+        {
+            return (Node) criteriaExpression.evaluate(reportDoc, XPathConstants.NODE);
+        }
+        catch (XPathExpressionException e)
+        {
+            throw new RuntimeException("unable to evaluate xpath expression on document", e);
+        }
     }
 
     private void addAttribute(String name, String sortColumnId, Element columnOrderRef, Document reportDoc) {

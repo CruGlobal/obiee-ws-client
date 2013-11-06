@@ -233,8 +233,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             Class<T> rowType = reportDefinition.getRowType();
             ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
 
-            RowBuilder<T> rowBuilder;
-            NodeList rows;
+            Document dataDocument;
+            Document metadataDocument;
             ReportParams params = buildReportParams(selection);
             if(sortColumn != null)
             {
@@ -244,32 +244,39 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 }
                 
                 String metadata = queryForMetadata(reportPathConfiguration, params);
-                Document metadataDoc = buildRowsetDocument(metadata);
+                metadataDocument = buildRowsetDocument(metadata);
 
-                rowBuilder = buildRowBuilder(metadataDoc);
-
-                String sortColumnId = findSortColumnId(sortColumn, metadataDoc);
-                
-                String xmlWithSort = setupXmlForQuery(
-                    reportPathConfiguration,
-                    params,
-                    sortColumnId,
-                    direction);
-                String rowset = xmlQueryForData(xmlWithSort);
-                Document doc = buildRowsetDocument(rowset);
-                rows = getRows(doc);
+                String rowset = buildXmlReportAndQuery(reportPathConfiguration, params, metadataDocument);
+                dataDocument = buildRowsetDocument(rowset);
             }
             else
             {
                 String rowset = queryForMetadataAndData(reportPathConfiguration, params);
-                Document doc = buildRowsetDocument(rowset);
-                if (isEmptyRowset(doc))
-                    return Lists.newArrayList();
-                rowBuilder = buildRowBuilder(doc);
-                rows = getRows(doc);
+                dataDocument = buildRowsetDocument(rowset);
+                metadataDocument = dataDocument;
             }
 
+            if (isEmptyRowset(dataDocument))
+                return Lists.newArrayList();
+            RowBuilder<T> rowBuilder = buildRowBuilder(metadataDocument);
+            NodeList rows = getRows(dataDocument);
             return buildResults(rowBuilder, rows);
+        }
+
+        private String buildXmlReportAndQuery(
+            ReportPath reportPathConfiguration,
+            ReportParams params,
+            Document metadataDoc) {
+
+            String sortColumnId = findSortColumnId(sortColumn, metadataDoc);
+
+            String xmlReportWithAppropriateOrdering = createXmlReportWithAppropriateOrdering(
+                reportPathConfiguration,
+                params,
+                sortColumnId,
+                direction);
+
+            return queryForData(xmlReportWithAppropriateOrdering);
         }
 
         private boolean isEmptyRowset(Document rowsetDocument) {
@@ -484,7 +491,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return value;
     }
     
-    private String setupXmlForQuery(
+    private String createXmlReportWithAppropriateOrdering(
         ReportPath reportPathConfiguration,
         ReportParams params,
         String sortColumnId,
@@ -538,7 +545,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	return results.getRowset();
     }
     
-    private String xmlQueryForData(String xmlReport)
+    private String queryForData(String xmlReport)
     {
         operationTimer.start();
         

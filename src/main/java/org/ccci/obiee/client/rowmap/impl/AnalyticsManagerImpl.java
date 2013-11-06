@@ -278,7 +278,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 sortColumnId,
                 direction);
 
-            return queryForData(xmlReportWithAppropriateOrdering);
+            return queryForData(xmlReportWithAppropriateOrdering, params);
         }
 
         private boolean isEmptyRowset(Document rowsetDocument) {
@@ -547,12 +547,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	return results.getRowset();
     }
     
-    private String queryForData(String xmlReport)
+    private String queryForData(String xmlReport, ReportParams reportParams)
     {
         operationTimer.start();
         
         XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
-    	QueryResults results = queryXmlViewServiceWithXmlAndHandleExceptions(xmlReport, outputFormat);
+    	QueryResults results = queryXmlViewServiceWithXmlAndHandleExceptions(xmlReport, outputFormat, reportParams);
         
     	operationTimer.stopAndLog("queried for data");
         return results.getRowset();
@@ -560,7 +560,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     private QueryResults queryXmlViewServiceWithXmlAndHandleExceptions(
         String xmlReport,
-        XMLQueryOutputFormat outputFormat)
+        XMLQueryOutputFormat outputFormat, ReportParams reportParams)
     {
         XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
         executionOptions.setMaxRowsPerPage(-1);
@@ -569,7 +569,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         ReportRef report = new ReportRef();
         report.setReportXml(xmlReport);
 
-        ReportParams reportParams = new ReportParams();
     	try
     	{
             return xmlViewService.executeXMLQuery(report, outputFormat, executionOptions, reportParams, sessionId);

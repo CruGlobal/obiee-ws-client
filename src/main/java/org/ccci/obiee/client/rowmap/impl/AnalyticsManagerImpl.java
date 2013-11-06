@@ -641,27 +641,13 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 	 */
 	String prepareXml(String xml, String sortColumnId, SortDirection sortDirection)
 	{
-        if(xml != null)// TODO: needed?
-		{
-            Document reportDoc = buildXmlReportDocument(xml);
-
-            replaceColumnOrderChildren(sortColumnId, sortDirection, reportDoc);
-
-            xml = writeDocument(reportDoc);
-		}
-		return xml;
+        Document reportDoc = buildXmlReportDocument(xml);
+        replaceColumnOrderChildren(sortColumnId, sortDirection, reportDoc);
+        return writeDocument(reportDoc);
 	}
 
     void replaceColumnOrderChildren(String sortColumnId, SortDirection sortDirection, Document reportDoc) {
-        NodeList list;
-        try
-        {
-            list = (NodeList) columnOrderExpression.evaluate(reportDoc, XPathConstants.NODESET);
-        }
-        catch (XPathExpressionException e)
-        {
-            throw new RuntimeException("unable to evaluate xpath expression on document", e);
-        }
+        NodeList list = searchForColumnOrder(reportDoc);
 
         if (list.getLength() == 0)
             throw new RuntimeException("unable to find <saw:columnOrder>");
@@ -677,6 +663,19 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         addAttribute("direction", sortDirection.name().toLowerCase(), columnOrderRef, reportDoc);
 
         columnOrder.appendChild(columnOrderRef);
+    }
+
+    private NodeList searchForColumnOrder(Document reportDoc) {
+        NodeList list;
+        try
+        {
+            list = (NodeList) columnOrderExpression.evaluate(reportDoc, XPathConstants.NODESET);
+        }
+        catch (XPathExpressionException e)
+        {
+            throw new RuntimeException("unable to evaluate xpath expression on document", e);
+        }
+        return list;
     }
 
     private void addAttribute(String name, String sortColumnId, Element columnOrderRef, Document reportDoc) {

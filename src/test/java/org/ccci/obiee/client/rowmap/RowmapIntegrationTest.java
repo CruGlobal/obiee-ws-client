@@ -176,7 +176,7 @@ public class RowmapIntegrationTest
     }
     
     @Test(enabled = true)
-    public void testSortByAmountAndDesigParam() throws Exception
+    public void testSortByAmountWithDesigParam() throws Exception
     {
     	SortDirection direction = SortDirection.ASCENDING;
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -194,6 +194,8 @@ public class RowmapIntegrationTest
                 assertThat(row.getTransactionAmount(), greaterThanOrEqualTo(previous.getTransactionAmount()));
             previous = row;
         }
+        assertThat(rows, everyItem(
+            Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo(params.designationNumber))));
         printRowsize(rows);
     }
 

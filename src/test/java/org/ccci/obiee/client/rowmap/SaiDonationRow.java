@@ -44,9 +44,6 @@ public class SaiDonationRow
     @Scale(2)
     private BigDecimal transactionAmount;
     
-    @Column(tableHeading = "Transaction Item", columnHeading = "ROW_WID")
-    private String transactionItemRowWid;
-    
     @Column(tableHeading = "Transaction")
     private String transactionNumber;
     
@@ -113,16 +110,6 @@ public class SaiDonationRow
     public void setTransactionAmount(BigDecimal transactionAmount)
     {
         this.transactionAmount = transactionAmount;
-    }
-
-    public String getTransactionItemRowWid()
-    {
-        return transactionItemRowWid;
-    }
-
-    public void setTransactionItemRowWid(String transactionItemRowWid)
-    {
-        this.transactionItemRowWid = transactionItemRowWid;
     }
 
     public String getTransactionNumber()

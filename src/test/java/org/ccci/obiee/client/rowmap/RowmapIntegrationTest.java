@@ -1,6 +1,7 @@
     package org.ccci.obiee.client.rowmap;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -55,6 +56,8 @@ public class RowmapIntegrationTest
         List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
+        assertThat(rows, everyItem(
+            Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo("0378570"))));
         printRowsize(rows);
     }
     
@@ -69,6 +72,8 @@ public class RowmapIntegrationTest
         List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
+        assertThat(rows, everyItem(
+            Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo(params.designationNumber))));
         printRowsize(rows);
     }
     
@@ -101,7 +106,7 @@ public class RowmapIntegrationTest
         printRowsize(rows);
     }
     
-    @Test(enabled = true) //not getting any results; i need to look into this further
+    @Test(enabled = true)
     public void testRetrieveWithDateParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -161,6 +166,12 @@ public class RowmapIntegrationTest
     	List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
+        SaiDonationRow previous = null;
+        for (SaiDonationRow row : rows) {
+            if (previous != null)
+                assertThat(row.getTransactionDate(), greaterThanOrEqualTo(previous.getTransactionDate()));
+            previous = row;
+        }
         printRowsize(rows);
     }
     

@@ -33,6 +33,7 @@ import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import com.google.common.collect.Lists;
 import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.DataRetrievalException;
@@ -262,11 +263,18 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             {
                 String rowset = queryForMetadataAndData(reportPathConfiguration, params);
                 Document doc = buildRowsetDocument(rowset);
+                if (isEmptyRowset(doc))
+                    return Lists.newArrayList();
                 rowBuilder = buildRowBuilder(doc);
                 rows = getRows(doc);
             }
 
             return buildResults(rowBuilder, rows);
+        }
+
+        private boolean isEmptyRowset(Document rowsetDocument) {
+            Node rowsetNode = rowsetDocument.getDocumentElement();
+            return rowsetNode.getChildNodes().getLength() == 0;
         }
 
         private List<T> buildResults(RowBuilder<T> rowBuilder, NodeList rows)
@@ -297,7 +305,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 elementNamesPerColumnId.put(new ReportColumnId(tableHeading, columnHeading), elementName);
             }
             if (elementNamesPerColumnId.isEmpty())
-                throw new DataRetrievalException("No mapping information was returned in rowset");
+                throw new DataRetrievalException("No schema was returned in rowset");
             ConverterStore converters = reportDefinition.getConverterStore();
             ConverterStore reportConverterStore = converterStore.copyAndAdd(converters);
             

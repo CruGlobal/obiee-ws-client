@@ -33,6 +33,7 @@ import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import com.google.common.collect.Lists;
 import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.DataRetrievalException;
@@ -232,8 +233,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             Class<T> rowType = reportDefinition.getRowType();
             ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
 
-            RowBuilder<T> rowBuilder;
-            NodeList rows;
+            Document dataDocument;
+            Document metadataDocument;
             ReportParams params = buildReportParams(selection);
             if(sortColumn != null)
             {
@@ -243,30 +244,44 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 }
                 
                 String metadata = queryForMetadata(reportPathConfiguration, params);
-                Document metadataDoc = buildRowsetDocument(metadata);
+                metadataDocument = buildRowsetDocument(metadata);
 
-                rowBuilder = buildRowBuilder(metadataDoc);
-
-                String sortColumnId = findSortColumnId(sortColumn, metadataDoc);
-                
-                String xmlWithSort = setupXmlForQuery(
-                    reportPathConfiguration,
-                    params,
-                    sortColumnId,
-                    direction);
-                String rowset = xmlQueryForData(xmlWithSort);
-                Document doc = buildRowsetDocument(rowset);
-                rows = getRows(doc);
+                String rowset = buildXmlReportAndQuery(reportPathConfiguration, params, metadataDocument);
+                dataDocument = buildRowsetDocument(rowset);
             }
             else
             {
                 String rowset = queryForMetadataAndData(reportPathConfiguration, params);
-                Document doc = buildRowsetDocument(rowset);
-                rowBuilder = buildRowBuilder(doc);
-                rows = getRows(doc);
+                dataDocument = buildRowsetDocument(rowset);
+                metadataDocument = dataDocument;
             }
 
+            if (isEmptyRowset(dataDocument))
+                return Lists.newArrayList();
+            RowBuilder<T> rowBuilder = buildRowBuilder(metadataDocument);
+            NodeList rows = getRows(dataDocument);
             return buildResults(rowBuilder, rows);
+        }
+
+        private String buildXmlReportAndQuery(
+            ReportPath reportPathConfiguration,
+            ReportParams params,
+            Document metadataDoc) {
+
+            String sortColumnId = findSortColumnId(sortColumn, metadataDoc);
+
+            String xmlReportWithAppropriateOrdering = createXmlReportWithAppropriateOrdering(
+                reportPathConfiguration,
+                params,
+                sortColumnId,
+                direction);
+
+            return queryForData(xmlReportWithAppropriateOrdering);
+        }
+
+        private boolean isEmptyRowset(Document rowsetDocument) {
+            Node rowsetNode = rowsetDocument.getDocumentElement();
+            return rowsetNode.getChildNodes().getLength() == 0;
         }
 
         private List<T> buildResults(RowBuilder<T> rowBuilder, NodeList rows)
@@ -297,7 +312,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 elementNamesPerColumnId.put(new ReportColumnId(tableHeading, columnHeading), elementName);
             }
             if (elementNamesPerColumnId.isEmpty())
-                throw new DataRetrievalException("No mapping information was returned in rowset");
+                throw new DataRetrievalException("No schema was returned in rowset");
             ConverterStore converters = reportDefinition.getConverterStore();
             ConverterStore reportConverterStore = converterStore.copyAndAdd(converters);
             
@@ -476,7 +491,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return value;
     }
     
-    private String setupXmlForQuery(
+    private String createXmlReportWithAppropriateOrdering(
         ReportPath reportPathConfiguration,
         ReportParams params,
         String sortColumnId,
@@ -530,7 +545,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	return results.getRowset();
     }
     
-    private String xmlQueryForData(String xmlReport)
+    private String queryForData(String xmlReport)
     {
         operationTimer.start();
         
@@ -641,27 +656,13 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 	 */
 	String prepareXml(String xml, String sortColumnId, SortDirection sortDirection)
 	{
-        if(xml != null)// TODO: needed?
-		{
-            Document reportDoc = buildXmlReportDocument(xml);
-
-            replaceColumnOrderChildren(sortColumnId, sortDirection, reportDoc);
-
-            xml = writeDocument(reportDoc);
-		}
-		return xml;
+        Document reportDoc = buildXmlReportDocument(xml);
+        replaceColumnOrderChildren(sortColumnId, sortDirection, reportDoc);
+        return writeDocument(reportDoc);
 	}
 
     void replaceColumnOrderChildren(String sortColumnId, SortDirection sortDirection, Document reportDoc) {
-        NodeList list;
-        try
-        {
-            list = (NodeList) columnOrderExpression.evaluate(reportDoc, XPathConstants.NODESET);
-        }
-        catch (XPathExpressionException e)
-        {
-            throw new RuntimeException("unable to evaluate xpath expression on document", e);
-        }
+        NodeList list = searchForColumnOrder(reportDoc);
 
         if (list.getLength() == 0)
             throw new RuntimeException("unable to find <saw:columnOrder>");
@@ -677,6 +678,19 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         addAttribute("direction", sortDirection.name().toLowerCase(), columnOrderRef, reportDoc);
 
         columnOrder.appendChild(columnOrderRef);
+    }
+
+    private NodeList searchForColumnOrder(Document reportDoc) {
+        NodeList list;
+        try
+        {
+            list = (NodeList) columnOrderExpression.evaluate(reportDoc, XPathConstants.NODESET);
+        }
+        catch (XPathExpressionException e)
+        {
+            throw new RuntimeException("unable to evaluate xpath expression on document", e);
+        }
+        return list;
     }
 
     private void addAttribute(String name, String sortColumnId, Element columnOrderRef, Document reportDoc) {

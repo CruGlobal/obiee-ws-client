@@ -66,7 +66,18 @@ public class AnalyticsManagerTest
     @Test
     public void testTransformSort() throws Exception
     {
-        Document document = readSampleXmlQuery();
+        Document document = parse("sample-xml-query.xml");
+        manager.replaceColumnOrderChildren("c5", SortDirection.ASCENDING, document);
+        String output = manager.writeDocument(document);
+
+        assertThat(output, containsString(
+            "<saw:columnOrder><saw:columnOrderRef columnID=\"c5\" direction=\"ascending\"/></saw:columnOrder>"));
+    }
+
+    @Test
+    public void testTransformSortWhenReportHasNoColumnOrder() throws Exception
+    {
+        Document document = parse("sample-xml-query-no-column-order.xml");
         manager.replaceColumnOrderChildren("c5", SortDirection.ASCENDING, document);
         String output = manager.writeDocument(document);
 
@@ -76,11 +87,6 @@ public class AnalyticsManagerTest
     private Document readSimpleRowset() throws ParserConfigurationException, SAXException, IOException
     {
         return parse("simple-rowset.xml");
-    }
-
-    private Document readSampleXmlQuery() throws ParserConfigurationException, SAXException, IOException
-    {
-        return parse("sample-xml-query.xml");
     }
 
     private Document parse(String filename) throws ParserConfigurationException, SAXException, IOException {

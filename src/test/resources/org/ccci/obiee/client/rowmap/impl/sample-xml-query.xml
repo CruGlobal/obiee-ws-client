@@ -1,0 +1,38 @@
+<saw:report xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlVersion="201201160" xmlns:saw="com.siebel.analytics.web/report/v1.1" xmlns:sawx="com.siebel.analytics.web/expression/v1.1">
+  <saw:criteria subjectArea="&quot;CCCi Analytics&quot;" xsi:type="saw:simpleCriteria">
+    <saw:columns>
+      <saw:column columnID="c0" xsi:type="saw:regularColumn" forceGroupBy="true"><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">Designation.&quot;Designation Number&quot;</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column columnID="c2" xsi:type="saw:regularColumn" forceGroupBy="true"><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">&quot;- Account Profile&quot;.&quot;Account Number&quot;</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column columnID="c4" xsi:type="saw:regularColumn" forceGroupBy="true"><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">&quot;- Account Profile&quot;.&quot;Account Name&quot;</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column columnID="c5" xsi:type="saw:regularColumn" forceGroupBy="true"><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">&quot;- Transaction Date&quot;.&quot;Transaction Date&quot;</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column columnID="c6" xsi:type="saw:regularColumn" forceGroupBy="true"><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">Transaction.&quot;Sub Type&quot;</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column columnID="c7" xsi:type="saw:regularColumn" forceGroupBy="true">
+        <saw:displayFormat><saw:formatSpec suppress="repeat" interaction="default"/></saw:displayFormat>
+        <saw:columnHeading>
+          <saw:displayFormat><saw:formatSpec interaction="default"/></saw:displayFormat></saw:columnHeading><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">&quot;Transaction Item&quot;.Amount</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column columnID="c1" xsi:type="saw:regularColumn" forceGroupBy="true">
+        <saw:displayFormat><saw:formatSpec visibility="hidden" suppress="default" interaction="default"/></saw:displayFormat>
+        <saw:columnHeading>
+          <saw:displayFormat><saw:formatSpec interaction="default"/></saw:displayFormat></saw:columnHeading><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">&quot;Transaction Item&quot;.ROW_WID</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column columnID="c10" xsi:type="saw:regularColumn" forceGroupBy="true"><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">&quot;Transaction Item&quot;.ROW_ID</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column columnID="c8" xsi:type="saw:regularColumn" forceGroupBy="true"><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">Transaction.&quot;Transaction Number&quot;</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column columnID="c9" xsi:type="saw:regularColumn" forceGroupBy="true"><saw:columnFormula><sawx:expr xsi:type="sawx:sqlExpression">&quot;- Fact - Transaction Items&quot;.&quot;# Transaction Items&quot;</sawx:expr></saw:columnFormula></saw:column></saw:columns>
+    <saw:filter>
+      <sawx:expr xsi:type="sawx:logical" op="and">
+        <sawx:expr xsi:type="sawx:sql">&quot;- Transaction Date&quot;.&quot;Transaction Date&quot; BETWEEN @{donationRangeBegin}{date &#39;0001-01-01&#39;} AND @{donationRangeEnd}{date &#39;9999-12-31&#39;}</sawx:expr>
+        <sawx:expr xsi:type="sawx:comparison" op="equal">
+          <sawx:expr xsi:type="sawx:sqlExpression">Designation.&quot;Designation Number&quot;</sawx:expr>
+          <sawx:expr xsi:type="sawx:eval" default="0378570">designationNumber</sawx:expr></sawx:expr></sawx:expr></saw:filter>
+    <saw:columnOrder/></saw:criteria>
+  <saw:views currentView="0">
+    <saw:view xsi:type="saw:compoundView" name="compoundView!1">
+      <saw:cvTable>
+        <saw:cvRow>
+          <saw:cvCell viewName="titleView!1">
+            <saw:displayFormat/></saw:cvCell></saw:cvRow>
+        <saw:cvRow>
+          <saw:cvCell viewName="tableView!1">
+            <saw:displayFormat/></saw:cvCell></saw:cvRow></saw:cvTable></saw:view>
+    <saw:view xsi:type="saw:titleView" name="titleView!1"/>
+    <saw:view xsi:type="saw:tableView" name="tableView!1"><saw:edges><saw:edge axis="page" showColumnHeader="true"/><saw:edge axis="section"/><saw:edge axis="row" showColumnHeader="true"><saw:edgeLayers><saw:edgeLayer type="column" columnID="c0"/><saw:edgeLayer type="column" columnID="c2"/><saw:edgeLayer type="column" columnID="c4"/><saw:edgeLayer type="column" columnID="c5"/><saw:edgeLayer type="column" columnID="c6"/><saw:edgeLayer type="column" columnID="c7"/><saw:edgeLayer type="column" columnID="c1"/><saw:edgeLayer type="column" columnID="c10"/><saw:edgeLayer type="column" columnID="c8"/><saw:edgeLayer type="column" columnID="c9"/></saw:edgeLayers></saw:edge><saw:edge axis="column"/></saw:edges></saw:view></saw:views>
+  <saw:prompts/></saw:report>

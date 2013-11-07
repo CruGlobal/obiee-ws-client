@@ -245,7 +245,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                     direction = SortDirection.ASCENDING;
                 }
                 
-                String metadata = queryForMetadata(reportPathConfiguration, params);
+                String metadata = queryForMetadata(reportPathConfiguration);
                 metadataDocument = buildRowsetDocument(metadata);
 
                 String rowset = buildXmlReportAndQuery(reportPathConfiguration, params, metadataDocument);
@@ -269,6 +269,15 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             ReportPath reportPathConfiguration,
             ReportParams params,
             Document metadataDoc) {
+            if (isEmptyRowset(metadataDoc)) {
+                throw new RowmapConfigurationException(
+                    String.format(
+                        "the report '%s', as stored in Answers, appears to return zero results. " +
+                        "Please adjust the default parameters in Answers so that it returns at least one.",
+                        reportPathConfiguration.value()
+                    )
+                );
+            }
 
             String sortColumnId = findSortColumnId(sortColumn, metadataDoc);
 
@@ -524,7 +533,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return prepareXml(xml, sortColumnId, direction);
     }
     
-    private String queryForMetadata(ReportPath reportPathConfiguration, ReportParams reportParams)
+    private String queryForMetadata(ReportPath reportPathConfiguration)
     {
         operationTimer.start();
         
@@ -538,7 +547,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
         QueryResults results = queryXmlViewServiceAndHandleExceptions(
            reportPathConfiguration,
-           reportParams,
+           new ReportParams(),
            report,
            outputFormat,
            executionOptions);

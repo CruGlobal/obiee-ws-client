@@ -214,6 +214,23 @@ public class RowmapIntegrationTest
 
         assertThat(rows, hasSize(equalTo(0)));
     }
+
+    @Test(enabled = true)
+    public void testRetrieveWithSortingAndNoResults() throws Exception
+    {
+        SaiDonationParameters params = new SaiDonationParameters();
+        params.designationNumber = "0478406";
+        params.donationRangeBegin = new LocalDate(2011, 1, 1);
+        params.donationRangeEnd = new LocalDate(2010, 1, 1);
+
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        query.withSelection(params);
+        query.orderBy(SaiDonationRow.report.getColumn("transactionAmount"), SortDirection.ASCENDING);
+        List<SaiDonationRow> rows = query.getResultList();
+
+        assertThat(rows, hasSize(equalTo(0)));
+    }
+
     
     @Test
     public void testValidate() throws Exception

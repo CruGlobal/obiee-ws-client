@@ -356,6 +356,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         
         ReportColumnId sortColumnId = ReportColumnId.buildColumnId(sortColumn.getField());
         
+        if(columnDefinitionXsdElements.getLength() == 0) return null;
+        
         for (Node node : Doms.each(columnDefinitionXsdElements) )
         {
             ReportColumnId potentialColumnId = new ReportColumnId(

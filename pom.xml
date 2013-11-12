@@ -36,7 +36,7 @@
               <target>2.1</target>
               <wsdlDirectory>src/main/resources/wsdl</wsdlDirectory>
               <wsdlFiles>
-                <!-- This is an unmodified copy of http://slobiw02.ccci.org:7777/analytics/saw.dll?wsdl -->
+                <!-- This is an unmodified copy of http://slobiw02.ccci.org:7777/analytics-ws/saw.dll/wsdl/v7 -->
                 <wsdlFile>siebel-analytics-web.wsdl</wsdlFile>
               </wsdlFiles>
                 <!-- 

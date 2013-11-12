@@ -2,6 +2,7 @@ package org.ccci.obiee.client.rowmap.impl;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -18,6 +19,12 @@ import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.soap.SOAPFaultException;
 import javax.xml.xpath.XPath;
@@ -26,6 +33,7 @@ import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import com.google.common.collect.Lists;
 import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.DataRetrievalException;
@@ -42,7 +50,9 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
 import org.joda.time.format.ISODateTimeFormat;
+import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
@@ -52,15 +62,15 @@ import org.xml.sax.SAXParseException;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
-import com.siebel.analytics.web.soap.v5.ReportEditingServiceSoap;
-import com.siebel.analytics.web.soap.v5.SAWSessionServiceSoap;
-import com.siebel.analytics.web.soap.v5.XmlViewServiceSoap;
-import com.siebel.analytics.web.soap.v5.model.QueryResults;
-import com.siebel.analytics.web.soap.v5.model.ReportParams;
-import com.siebel.analytics.web.soap.v5.model.ReportRef;
-import com.siebel.analytics.web.soap.v5.model.Variable;
-import com.siebel.analytics.web.soap.v5.model.XMLQueryExecutionOptions;
-import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
+import oracle.bi.web.soap.ReportEditingServiceSoap;
+import oracle.bi.web.soap.SAWSessionServiceSoap;
+import oracle.bi.web.soap.XmlViewServiceSoap;
+import oracle.bi.web.soap.QueryResults;
+import oracle.bi.web.soap.ReportParams;
+import oracle.bi.web.soap.ReportRef;
+import oracle.bi.web.soap.Variable;
+import oracle.bi.web.soap.XMLQueryExecutionOptions;
+import oracle.bi.web.soap.XMLQueryOutputFormat;
 
 /**
  * 
@@ -72,6 +82,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 {
 
     private static final String VALIDATION_REPORT_PATH = "/shared/CCCi/SSW/Rowmap Session Validation Query";
+    private static final String SAW_URI = "com.siebel.analytics.web/report/v1.1";
     /**
      * The Answers web service doesn't require you to send the sessionId on every request as long
      * as your web service client maintains cookies.  The jax-ws client can be configured to do this
@@ -86,25 +97,29 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     private final SAWSessionServiceSoap sawSessionService;
     private final XmlViewServiceSoap xmlViewService;
     private final XPathFactory xpathFactory;
+
     private XPathExpression xsdElementExpression;
     private XPathExpression rowExpression;
+    private XPathExpression columnOrderExpression;
+    private XPathExpression criteriaExpression;
+
     private final DocumentBuilder builder;
     private final ConverterStore converterStore;
+
     private final ReportEditingServiceSoap reportEditingService;
-    
     private OperationTimer operationTimer = new NoOpOperationTimer();
     private boolean closed = false;
-    private Exception recentException = null;
-    
 
+
+    private Exception recentException = null;
     private Logger log = Logger.getLogger(getClass());
-    
+
     /**
      * Assumes that the caller has logged us in to OBIEE already.  
      * @param sessionId used to maintain session for various calls
      * @param sawSessionService used for logout
      * @param xmlViewService used for retrieving report queries
-     * @param converterStore
+     * @param converterStore used to convert field values
      */
     public AnalyticsManagerImpl(String sessionId, 
                                 SAWSessionServiceSoap sawSessionService,
@@ -142,6 +157,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             xsdElementExpression = xpath.compile("/rowset:rowset/xsd:schema/xsd:complexType[@name='Row']/xsd:sequence/xsd:element");
             rowExpression = xpath.compile("/rowset:rowset/rowset:Row");
+            columnOrderExpression = xpath.compile("/saw:report/saw:criteria/saw:columnOrder");
+            criteriaExpression = xpath.compile("/saw:report/saw:criteria");
         }
         catch (XPathExpressionException e)
         {
@@ -218,8 +235,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             Class<T> rowType = reportDefinition.getRowType();
             ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
 
-            RowBuilder<T> rowBuilder;
-            NodeList rows;
+            Document dataDocument;
+            Document metadataDocument;
             ReportParams params = buildReportParams(selection);
             if(sortColumn != null)
             {
@@ -228,29 +245,54 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                     direction = SortDirection.ASCENDING;
                 }
                 
-                String metadata = queryForMetadata(reportPathConfiguration, params);
-                Document metadataDoc = buildDocument(metadata);
-                
-                rowBuilder = buildRowBuilder(metadataDoc);
-                String displayFormula = findSortDisplayFormula(sortColumn, metadataDoc);
-                
-                String sqlUsed = setupSqlForQuery(reportPathConfiguration, params, displayFormula, direction);
-                String data = sqlQueryForData(sqlUsed);
-                Document dataDocument = buildDocument(data);
-                
-                rows = getRows(dataDocument);
+                String metadata = queryForMetadata(reportPathConfiguration);
+                metadataDocument = buildRowsetDocument(metadata);
+
+                String rowset = buildXmlReportAndQuery(reportPathConfiguration, params, metadataDocument);
+                dataDocument = buildRowsetDocument(rowset);
             }
             else
             {
                 String rowset = queryForMetadataAndData(reportPathConfiguration, params);
-                Document doc = buildDocument(rowset);
-                rowBuilder = buildRowBuilder(doc);
-                rows = getRows(doc);
+                dataDocument = buildRowsetDocument(rowset);
+                metadataDocument = dataDocument;
             }
-            
-            List<T> results = buildResults(rowBuilder, rows);
-            
-            return results;
+
+            if (isEmptyRowset(dataDocument))
+                return Lists.newArrayList();
+            RowBuilder<T> rowBuilder = buildRowBuilder(metadataDocument);
+            NodeList rows = getRows(dataDocument);
+            return buildResults(rowBuilder, rows);
+        }
+
+        private String buildXmlReportAndQuery(
+            ReportPath reportPathConfiguration,
+            ReportParams params,
+            Document metadataDoc) {
+            if (isEmptyRowset(metadataDoc)) {
+                throw new RowmapConfigurationException(
+                    String.format(
+                        "the report '%s', as stored in Answers, appears to return zero results. " +
+                        "Please adjust the default parameters in Answers so that it returns at least one.",
+                        reportPathConfiguration.value()
+                    )
+                );
+            }
+
+            String sortColumnId = findSortColumnId(sortColumn, metadataDoc);
+
+            String xmlReportWithAppropriateOrdering = createXmlReportWithAppropriateOrdering(
+                reportPathConfiguration,
+                params,
+                sortColumnId,
+                direction);
+
+            return queryForData(xmlReportWithAppropriateOrdering, params);
+        }
+
+        private boolean isEmptyRowset(Document rowsetDocument) {
+            Node rowsetNode = rowsetDocument.getDocumentElement();
+            return rowsetNode.getChildNodes().getLength() == 0;
         }
 
         private List<T> buildResults(RowBuilder<T> rowBuilder, NodeList rows)
@@ -280,6 +322,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 
                 elementNamesPerColumnId.put(new ReportColumnId(tableHeading, columnHeading), elementName);
             }
+            if (elementNamesPerColumnId.isEmpty())
+                throw new DataRetrievalException("No schema was returned in rowset");
             ConverterStore converters = reportDefinition.getConverterStore();
             ConverterStore reportConverterStore = converterStore.copyAndAdd(converters);
             
@@ -315,7 +359,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
     }
     
-    private <T> String findSortDisplayFormula(ReportColumn<T> sortColumn, Document metadataDoc)
+    private <T> String findSortColumnId(ReportColumn<T> sortColumn, Document metadataDoc)
     {
         NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(metadataDoc);
         
@@ -328,7 +372,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 node.getAttributes().getNamedItem("saw-sql:columnHeading").getNodeValue());
             if (sortColumnId.equals(potentialColumnId))
             {
-                return node.getAttributes().getNamedItem("saw-sql:displayFormula").getNodeValue();
+                return node.getAttributes().getNamedItem("saw-sql:columnID").getNodeValue();
             }
         }
         throw new DataRetrievalException("metadata does not indicate such a sort column exists: " + sortColumnId);
@@ -375,7 +419,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     {
         if(fieldType.equals(String.class))
         {
-        	return (String) value;
+            //noinspection RedundantCast
+            return (String) value;
         }
         else if(fieldType.equals(LocalDate.class))
         {
@@ -457,34 +502,38 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return value;
     }
     
-    private String setupSqlForQuery(ReportPath reportPathConfiguration, ReportParams params, String sortFormula, SortDirection direction)
+    private String createXmlReportWithAppropriateOrdering(
+        ReportPath reportPathConfiguration,
+        ReportParams params,
+        String sortColumnId,
+        SortDirection direction)
     {
         operationTimer.start();
     	ReportRef report = new ReportRef();
         report.setReportPath(reportPathConfiguration.value());
         
-        String sqlUsed;
+        String xml;
         try
         {
-            sqlUsed = reportEditingService.generateReportSQL(report, params, sessionId);
+            xml = (String) reportEditingService.applyReportParams(report, params, true, sessionId);
         }
         catch (SOAPFaultException e)
         {
             recentException = e;
             throw new DataRetrievalException(
                     String.format(
-                        "unable to generate sql for report %s with %s; details follow:\n%s", 
+                        "unable to generate xml for report %s with %s; details follow:\n%s",
                         reportPathConfiguration.value(),
                         formatParamsAsString(params),
                         SoapFaults.getDetailsAsString(e.getFault())), 
                     e);
         }
 
-        operationTimer.stopAndLog("queried for sql");
-        return prepareSql(sqlUsed, sortFormula, direction);
+        operationTimer.stopAndLog("queried for xml");
+        return prepareXml(xml, sortColumnId, direction);
     }
     
-    private String queryForMetadata(ReportPath reportPathConfiguration, ReportParams reportParams)
+    private String queryForMetadata(ReportPath reportPathConfiguration)
     {
         operationTimer.start();
         
@@ -498,7 +547,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
         QueryResults results = queryXmlViewServiceAndHandleExceptions(
            reportPathConfiguration,
-           reportParams,
+           new ReportParams(),
            report,
            outputFormat,
            executionOptions);
@@ -507,31 +556,39 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	return results.getRowset();
     }
     
-    private String sqlQueryForData(String sqlUsed)
+    private String queryForData(String xmlReport, ReportParams reportParams)
     {
         operationTimer.start();
         
         XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
-    	QueryResults results = queryXmlViewServiceWithSqlAndHandleExceptions(sqlUsed, outputFormat);
+    	QueryResults results = queryXmlViewServiceWithXmlAndHandleExceptions(xmlReport, outputFormat, reportParams);
         
     	operationTimer.stopAndLog("queried for data");
         return results.getRowset();
     }
 
-    private QueryResults queryXmlViewServiceWithSqlAndHandleExceptions(String sqlUsed, XMLQueryOutputFormat outputFormat)
+    private QueryResults queryXmlViewServiceWithXmlAndHandleExceptions(
+        String xmlReport,
+        XMLQueryOutputFormat outputFormat, ReportParams reportParams)
     {
-        QueryResults results;
+        XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
+        executionOptions.setMaxRowsPerPage(-1);
+        executionOptions.setPresentationInfo(true);
+
+        ReportRef report = new ReportRef();
+        report.setReportXml(xmlReport);
+
     	try
     	{
-    		results = xmlViewService.executeSQLQuery(sqlUsed, outputFormat, new XMLQueryExecutionOptions(), sessionId);
-    	}
+            return xmlViewService.executeXMLQuery(report, outputFormat, executionOptions, reportParams, sessionId);
+        }
         catch (SOAPFaultException e)
         {
             recentException = e;
             throw new DataRetrievalException(
                     String.format(
-                        "unable to query with sql '%s'; details follow:\n%s", 
-                        sqlUsed,
+                        "unable to query with xml:\n%s\n\nsoapfault details follow:\n%s",
+                        xmlReport,
                         SoapFaults.getDetailsAsString(e.getFault())), 
                     e);
         }
@@ -539,9 +596,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
     	    recentException = e;
         	throw new DataRetrievalException(
-        			String.format("unable to query with sql: ", sqlUsed), e);
+        			String.format("unable to query with xml:\n" +
+                                  "%s", xmlReport), e);
         }
-        return results;
     }
     
     private String queryForMetadataAndData(ReportPath reportPathConfiguration, ReportParams reportParams)
@@ -605,30 +662,90 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     }
 
     /**
-	 * Formats the SQL statement to be used for sorting.
+	 * modifies the xml definition of the query to order the results by the desired column
 	 */
-	private String prepareSql(String sqlUsed, String sortFormula, SortDirection direction)
+	String prepareXml(String xml, String sortColumnId, SortDirection sortDirection)
 	{
-		if(sqlUsed != null)
-		{
-			sqlUsed = removeOrderBy(sqlUsed);
-			sqlUsed = sqlUsed.concat(" ORDER BY " + sortFormula + " " + direction.toCode());
-		}
-		return sqlUsed;
+        Document reportDoc = buildXmlReportDocument(xml);
+        replaceColumnOrderChildren(sortColumnId, sortDirection, reportDoc);
+        return writeDocument(reportDoc);
 	}
-	
-	private String removeOrderBy(String sqlUsed)
-	{
-		if(!sqlUsed.contains("ORDER BY"))
-		{
-			return sqlUsed;
-		}
-		
-		int index = sqlUsed.indexOf(" ORDER BY");
-		sqlUsed = sqlUsed.substring(0,index);
-		return sqlUsed;
-	}
-	
+
+    void replaceColumnOrderChildren(String sortColumnId, SortDirection sortDirection, Document reportDoc) {
+        NodeList list = searchForColumnOrder(reportDoc);
+
+        Node columnOrder;
+        if (list.getLength() == 0)
+        {
+            Node criteriaNode = searchForCriteriaNode(reportDoc);
+            columnOrder = reportDoc.createElementNS(SAW_URI, "saw:columnOrder");
+            criteriaNode.appendChild(columnOrder);
+        }
+        else
+        {
+            columnOrder = list.item(0);
+        }
+
+        for (Node child : Doms.each(columnOrder.getChildNodes()))
+        {
+            columnOrder.removeChild(child);
+        }
+        Element columnOrderRef = reportDoc.createElementNS(SAW_URI, "saw:columnOrderRef");
+
+        addAttribute("columnID", sortColumnId, columnOrderRef, reportDoc);
+        addAttribute("direction", sortDirection.name().toLowerCase(), columnOrderRef, reportDoc);
+
+        columnOrder.appendChild(columnOrderRef);
+    }
+
+    private NodeList searchForColumnOrder(Document reportDoc) {
+        try
+        {
+            return (NodeList) columnOrderExpression.evaluate(reportDoc, XPathConstants.NODESET);
+        }
+        catch (XPathExpressionException e)
+        {
+            throw new RuntimeException("unable to evaluate xpath expression on document", e);
+        }
+    }
+
+    private Node searchForCriteriaNode(Document reportDoc) {
+        try
+        {
+            return (Node) criteriaExpression.evaluate(reportDoc, XPathConstants.NODE);
+        }
+        catch (XPathExpressionException e)
+        {
+            throw new RuntimeException("unable to evaluate xpath expression on document", e);
+        }
+    }
+
+    private void addAttribute(String name, String sortColumnId, Element columnOrderRef, Document reportDoc) {
+        Attr columnID = reportDoc.createAttribute(name);
+        columnID.setValue(sortColumnId);
+        columnOrderRef.getAttributes().setNamedItem(columnID);
+    }
+
+    String writeDocument(Document reportDoc) {
+        TransformerFactory factory = TransformerFactory.newInstance();
+        Transformer transformer;
+        try {
+            transformer = factory.newTransformer();
+        } catch (TransformerConfigurationException e) {
+            throw new RuntimeException(e);
+        }
+
+        DOMSource source = new DOMSource(reportDoc);
+        StringWriter writer = new StringWriter();
+        StreamResult result = new StreamResult(writer);
+        try {
+            transformer.transform(source, result);
+        } catch (TransformerException e) {
+            throw new RuntimeException(e);
+        }
+        return writer.toString();
+    }
+
 	private String formatParamsAsString(ReportParams params)
     {
         return String.format("[variables=%s]", asMap(params.getVariables()));
@@ -646,40 +763,45 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     
 
 
-    Document buildDocument(String rowset)
+    Document buildRowsetDocument(String rowset)
     {
-        operationTimer.start();
-        Document document = parseRowset(rowset);
-        operationTimer.stopAndLog("parsed xml document");
-        return document;
+        return parseXmlString(rowset, "rowset from OBIEE");
     }
 
-    private Document parseRowset(String rowset)
+    private Document buildXmlReportDocument(String report)
     {
-        InputSource inputsource = new InputSource(new StringReader(rowset));
+        return parseXmlString(report, "xml report definition");
+    }
+
+    private Document parseXmlString(String xml, String description) {
+        operationTimer.start();
+        InputSource inputsource = new InputSource(new StringReader(xml));
+        String parseErrorMessage = "cannot parse " + description;
         try
         {
-            return builder.parse(inputsource );
+            Document document = builder.parse(inputsource);
+            operationTimer.stopAndLog("parsed xml document: " + description);
+            return document;
         }
         catch (SAXParseException e)
         {
             recentException = e;
             throw new DataRetrievalException(
                 String.format(
-                    "cannot parse rowset from OBIEE; error on line %s and column %s", 
+                    parseErrorMessage + "; error on line %s and column %s",
                     e.getLineNumber(),
-                    e.getColumnNumber()), 
+                    e.getColumnNumber()),
                 e);
         }
         catch (SAXException e)
         {
             recentException = e;
-            throw new DataRetrievalException("cannot parse rowset from OBIEE", e);
+            throw new DataRetrievalException(parseErrorMessage, e);
         }
         catch (IOException e)
         {
             recentException = e;
-            throw new DataRetrievalException("cannot parse rowset from OBIEE", e);
+            throw new DataRetrievalException(parseErrorMessage, e);
         }
     }
 
@@ -730,6 +852,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         public String getNamespaceURI(String prefix) {
             if (prefix == null) throw new NullPointerException("Null prefix");
             else if ("rowset".equals(prefix)) return "urn:schemas-microsoft-com:xml-analysis:rowset";
+            else if ("saw".equals(prefix)) return SAW_URI;
+            else if ("sawx".equals(prefix)) return "com.siebel.analytics.web/expression/v1.1";
             else if ("xsd".equals(prefix)) return XMLConstants.W3C_XML_SCHEMA_NS_URI;
             else if ("xml".equals(prefix)) return XMLConstants.XML_NS_URI;
             return XMLConstants.NULL_NS_URI;

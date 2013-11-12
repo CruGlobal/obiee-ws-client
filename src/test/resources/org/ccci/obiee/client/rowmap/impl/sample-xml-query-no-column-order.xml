@@ -1,0 +1,111 @@
+<saw:report xmlns:saw="com.siebel.analytics.web/report/v1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:sawx="com.siebel.analytics.web/expression/v1.1" xmlVersion="201201160">
+  <saw:criteria xsi:type="saw:simpleCriteria" subjectArea="&quot;CCCi Analytics&quot;" withinHierarchy="true">
+    <saw:columns>
+      <saw:column xsi:type="saw:regularColumn" columnID="c4cf1b15df951e990">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"- Source Account Profile"."Master Account Number"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="cd2d348705f9d477c">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"- Source Account Profile"."Master Account Name"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c37ff7c0875e16184">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"- Source Account Profile"."Account Number"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c4c71997733a53594">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"- Source Account Profile"."Account Name"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c4fc4c6ffd6cd3dfd">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"- Transaction Date"."Transaction Date"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c497db304f66cf349">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Transaction Sub Type"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c397cfc4718211293">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Transaction Status"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="cbbdc34ff58047dc5">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Campaign Code"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="ccae94bf78e80ee3b">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Transaction Amount"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c31ea4e3ce968eae9">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Transaction Type"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c90f6dd63005c2f0d">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Transaction Number"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="ce5287fc3de6e0f0c">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"- Account Of Record Profile"."Account Number"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c75fbb5e77d62ac6a">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"- Account Of Record Profile"."Account Name"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c7243673a7fd6e261">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Anon Flag"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="cb612995ae7c19d16">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Designation Number"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c2ad67ab2cc81c694">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Designation Name"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c084859c77f7f8dec">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Designation"."Status"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c1006c33c461c3751">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Payment"."Payment Status"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c025de494628c228e">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Payment"."Payment Type"</sawx:expr></saw:columnFormula></saw:column>
+      <saw:column xsi:type="saw:regularColumn" columnID="c8cbb446d7a69378b">
+        <saw:columnFormula>
+          <sawx:expr xsi:type="sawx:sqlExpression">"- Fact - Transaction Items"."# Transactions"</sawx:expr></saw:columnFormula></saw:column></saw:columns>
+    <saw:filter>
+      <sawx:expr xsi:type="sawx:logical" op="and">
+        <sawx:expr xsi:type="sawx:logical" op="or">
+          <sawx:expr xsi:type="sawx:sql">"- Source Account Profile"."Master Account Number" = '@{accountNumber}'</sawx:expr>
+          <sawx:expr xsi:type="sawx:sql">"- Source Account Profile"."Account Number" = '@{accountNumber}'</sawx:expr></sawx:expr>
+        <sawx:expr xsi:type="sawx:comparison" op="equal">
+          <sawx:expr xsi:type="sawx:sqlExpression">"Transaction Item"."Transaction Type"</sawx:expr>
+          <sawx:expr xsi:type="xsd:string">Donation</sawx:expr></sawx:expr>
+        <sawx:expr xsi:type="sawx:sql">"- Transaction Date"."Transaction Date" BETWEEN @{startDate}{date '0001-01-01'} AND @{endDate}{date '9999-12-31'}</sawx:expr></sawx:expr></saw:filter></saw:criteria>
+  <saw:views currentView="0">
+    <saw:view xsi:type="saw:compoundView" name="compoundView!1">
+      <saw:cvTable>
+        <saw:cvRow>
+          <saw:cvCell viewName="titleView!1">
+            <saw:displayFormat>
+              <saw:formatSpec/></saw:displayFormat></saw:cvCell></saw:cvRow>
+        <saw:cvRow>
+          <saw:cvCell viewName="tableView!1">
+            <saw:displayFormat>
+              <saw:formatSpec/></saw:displayFormat></saw:cvCell></saw:cvRow></saw:cvTable></saw:view>
+    <saw:view xsi:type="saw:titleView" name="titleView!1"/>
+    <saw:view xsi:type="saw:tableView" name="tableView!1" scrollingEnabled="true">
+      <saw:edges>
+        <saw:edge axis="page" showColumnHeader="true"/>
+        <saw:edge axis="section"/>
+        <saw:edge axis="row" showColumnHeader="true">
+          <saw:edgeLayers>
+            <saw:edgeLayer type="column" columnID="c4cf1b15df951e990"/>
+            <saw:edgeLayer type="column" columnID="cd2d348705f9d477c"/>
+            <saw:edgeLayer type="column" columnID="c37ff7c0875e16184"/>
+            <saw:edgeLayer type="column" columnID="c4c71997733a53594"/>
+            <saw:edgeLayer type="column" columnID="c497db304f66cf349"/>
+            <saw:edgeLayer type="column" columnID="c397cfc4718211293"/>
+            <saw:edgeLayer type="column" columnID="cbbdc34ff58047dc5"/>
+            <saw:edgeLayer type="column" columnID="ccae94bf78e80ee3b"/>
+            <saw:edgeLayer type="column" columnID="c31ea4e3ce968eae9"/>
+            <saw:edgeLayer type="column" columnID="c90f6dd63005c2f0d"/>
+            <saw:edgeLayer type="column" columnID="ce5287fc3de6e0f0c"/>
+            <saw:edgeLayer type="column" columnID="c75fbb5e77d62ac6a"/>
+            <saw:edgeLayer type="column" columnID="c7243673a7fd6e261"/>
+            <saw:edgeLayer type="column" columnID="cb612995ae7c19d16"/>
+            <saw:edgeLayer type="column" columnID="c2ad67ab2cc81c694"/>
+            <saw:edgeLayer type="column" columnID="c084859c77f7f8dec"/>
+            <saw:edgeLayer type="column" columnID="c1006c33c461c3751"/>
+            <saw:edgeLayer type="column" columnID="c025de494628c228e"/>
+            <saw:edgeLayer type="column" columnID="c8cbb446d7a69378b"/>
+            <saw:edgeLayer type="column" columnID="c4fc4c6ffd6cd3dfd"/></saw:edgeLayers></saw:edge>
+        <saw:edge axis="column" showColumnHeader="rollover"/></saw:edges></saw:view></saw:views></saw:report>

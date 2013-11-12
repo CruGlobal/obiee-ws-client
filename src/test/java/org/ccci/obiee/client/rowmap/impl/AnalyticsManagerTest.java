@@ -1,6 +1,7 @@
 package org.ccci.obiee.client.rowmap.impl;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -13,6 +14,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.ccci.obiee.client.rowmap.ReportDefinition;
+import org.ccci.obiee.client.rowmap.SortDirection;
 import org.ccci.obiee.client.rowmap.annotation.Column;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
 import org.ccci.obiee.client.rowmap.annotation.Scale;
@@ -60,14 +62,39 @@ public class AnalyticsManagerTest
         assertThat(schemaElements.getLength(), is(4));
         assertThat(schemaElements.item(0).getAttributes().getNamedItem("name").getNodeValue(), is("Column0"));
     }
-    
+
+    @Test
+    public void testTransformSort() throws Exception
+    {
+        Document document = parse("sample-xml-query.xml");
+        manager.replaceColumnOrderChildren("c5", SortDirection.ASCENDING, document);
+        String output = manager.writeDocument(document);
+
+        assertThat(output, containsString(
+            "<saw:columnOrder><saw:columnOrderRef columnID=\"c5\" direction=\"ascending\"/></saw:columnOrder>"));
+    }
+
+    @Test
+    public void testTransformSortWhenReportHasNoColumnOrder() throws Exception
+    {
+        Document document = parse("sample-xml-query-no-column-order.xml");
+        manager.replaceColumnOrderChildren("c5", SortDirection.ASCENDING, document);
+        String output = manager.writeDocument(document);
+
+        assertThat(output, containsString("<saw:columnOrder><saw:columnOrderRef columnID=\"c5\" direction=\"ascending\"/></saw:columnOrder>"));
+    }
+
     private Document readSimpleRowset() throws ParserConfigurationException, SAXException, IOException
     {
+        return parse("simple-rowset.xml");
+    }
+
+    private Document parse(String filename) throws ParserConfigurationException, SAXException, IOException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);
         DocumentBuilder documentBuilder = factory.newDocumentBuilder();
-        
-        InputStream xmlFileStream = this.getClass().getResourceAsStream("simple-rowset.xml");
+
+        InputStream xmlFileStream = this.getClass().getResourceAsStream(filename);
         return documentBuilder.parse(xmlFileStream);
     }
 

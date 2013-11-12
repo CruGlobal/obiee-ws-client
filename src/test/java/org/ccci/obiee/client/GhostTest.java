@@ -3,23 +3,23 @@ package org.ccci.obiee.client;
 
 import org.testng.annotations.Test;
 
-import com.siebel.analytics.web.soap.v5.SAWSessionService;
-import com.siebel.analytics.web.soap.v5.SAWSessionServiceSoap;
-import com.siebel.analytics.web.soap.v5.XmlViewService;
-import com.siebel.analytics.web.soap.v5.XmlViewServiceSoap;
-import com.siebel.analytics.web.soap.v5.model.QueryResults;
-import com.siebel.analytics.web.soap.v5.model.ReportParams;
-import com.siebel.analytics.web.soap.v5.model.ReportRef;
-import com.siebel.analytics.web.soap.v5.model.XMLQueryExecutionOptions;
-import com.siebel.analytics.web.soap.v5.model.XMLQueryOutputFormat;
+import oracle.bi.web.soap.SAWSessionService;
+import oracle.bi.web.soap.SAWSessionServiceSoap;
+import oracle.bi.web.soap.XmlViewService;
+import oracle.bi.web.soap.XmlViewServiceSoap;
+import oracle.bi.web.soap.QueryResults;
+import oracle.bi.web.soap.ReportParams;
+import oracle.bi.web.soap.ReportRef;
+import oracle.bi.web.soap.XMLQueryExecutionOptions;
+import oracle.bi.web.soap.XMLQueryOutputFormat;
 
 public class GhostTest
 {
 
     final static String TEST_USER = "ssw.test.obiee.user@ccci.org";
-    final static String TEST_PASSWORD = "CcciSsw1234";
+    final static String TEST_PASSWORD = "CcciSswTest12345";
     
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testLogonLogoff()
     {
         SAWSessionService sessionServiceEndpoint = new SAWSessionService();
@@ -30,7 +30,7 @@ public class GhostTest
     }
     
     
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testRunQuery()
     {
         XmlViewService xmlViewServiceEndpoint = new XmlViewService();

@@ -178,7 +178,7 @@ class RowBuilder<T>
         }
         catch (RuntimeException e)
         {
-            throw new DataRetrievalException("unable to parse; " + value, e);
+            throw new DataRetrievalException("unable to parse: " + value, e);
         }
 
         if (converted != null && !field.getType().isInstance(converted)

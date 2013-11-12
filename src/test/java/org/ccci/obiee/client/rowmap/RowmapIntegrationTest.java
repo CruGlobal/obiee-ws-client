@@ -1,6 +1,7 @@
     package org.ccci.obiee.client.rowmap;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -55,6 +56,8 @@ public class RowmapIntegrationTest
         List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
+        assertThat(rows, everyItem(
+            Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo("0378570"))));
         printRowsize(rows);
     }
     
@@ -69,6 +72,8 @@ public class RowmapIntegrationTest
         List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
+        assertThat(rows, everyItem(
+            Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo(params.designationNumber))));
         printRowsize(rows);
     }
     
@@ -101,7 +106,7 @@ public class RowmapIntegrationTest
         printRowsize(rows);
     }
     
-    @Test(enabled = true) //not getting any results; i need to look into this further
+    @Test(enabled = true)
     public void testRetrieveWithDateParameter() throws Exception
     {
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -161,11 +166,17 @@ public class RowmapIntegrationTest
     	List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
+        SaiDonationRow previous = null;
+        for (SaiDonationRow row : rows) {
+            if (previous != null)
+                assertThat(row.getTransactionDate(), greaterThanOrEqualTo(previous.getTransactionDate()));
+            previous = row;
+        }
         printRowsize(rows);
     }
     
-    @Test(enabled = false)
-    public void testSortByAmountAndDesigParam() throws Exception
+    @Test(enabled = true)
+    public void testSortByAmountWithDesigParam() throws Exception
     {
     	SortDirection direction = SortDirection.ASCENDING;
     	SaiDonationParameters params = new SaiDonationParameters();
@@ -173,13 +184,52 @@ public class RowmapIntegrationTest
         
         Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
-        query.orderBy(SaiDonationRow.report.getColumn("amount"), direction);
+        query.orderBy(SaiDonationRow.report.getColumn("transactionAmount"), direction);
     	List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
+        SaiDonationRow previous = null;
+        for (SaiDonationRow row : rows) {
+            if (previous != null)
+                assertThat(row.getTransactionAmount(), greaterThanOrEqualTo(previous.getTransactionAmount()));
+            previous = row;
+        }
+        assertThat(rows, everyItem(
+            Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo(params.designationNumber))));
         printRowsize(rows);
     }
-    
+
+
+    @Test(enabled = true)
+    public void testRetrieveWithNoResults() throws Exception
+    {
+        SaiDonationParameters params = new SaiDonationParameters();
+        params.designationNumber = "0478406";
+        params.donationRangeBegin = new LocalDate(2011, 1, 1);
+        params.donationRangeEnd = new LocalDate(2010, 1, 1);
+
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        query.withSelection(params);
+        List<SaiDonationRow> rows = query.getResultList();
+
+        assertThat(rows, hasSize(equalTo(0)));
+    }
+
+    @Test(enabled = true)
+    public void testRetrieveWithSortingAndNoResults() throws Exception
+    {
+        SaiDonationParameters params = new SaiDonationParameters();
+        params.designationNumber = "0478406";
+        params.donationRangeBegin = new LocalDate(2011, 1, 1);
+        params.donationRangeEnd = new LocalDate(2010, 1, 1);
+
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        query.withSelection(params);
+        query.orderBy(SaiDonationRow.report.getColumn("transactionAmount"), SortDirection.ASCENDING);
+        List<SaiDonationRow> rows = query.getResultList();
+
+        assertThat(rows, hasSize(equalTo(0)));
+    }
 
     
     @Test

@@ -3,16 +3,16 @@ package org.ccci.obiee.client.init;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.siebel.analytics.web.soap.v5.HtmlViewService;
-import com.siebel.analytics.web.soap.v5.IBotService;
-import com.siebel.analytics.web.soap.v5.JobManagementService;
-import com.siebel.analytics.web.soap.v5.MetadataService;
-import com.siebel.analytics.web.soap.v5.ReplicationService;
-import com.siebel.analytics.web.soap.v5.ReportEditingService;
-import com.siebel.analytics.web.soap.v5.SAWSessionService;
-import com.siebel.analytics.web.soap.v5.SecurityService;
-import com.siebel.analytics.web.soap.v5.WebCatalogService;
-import com.siebel.analytics.web.soap.v5.XmlViewService;
+import oracle.bi.web.soap.HtmlViewService;
+import oracle.bi.web.soap.IBotService;
+import oracle.bi.web.soap.JobManagementService;
+import oracle.bi.web.soap.MetadataService;
+import oracle.bi.web.soap.ReplicationService;
+import oracle.bi.web.soap.ReportEditingService;
+import oracle.bi.web.soap.SAWSessionService;
+import oracle.bi.web.soap.SecurityService;
+import oracle.bi.web.soap.WebCatalogService;
+import oracle.bi.web.soap.XmlViewService;
 
 public class AnswersServiceFactoryTest
 {

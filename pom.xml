@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <artifactId>obiee-ws-client</artifactId>
   <name>OBIEE Web Service Client</name>
-  <version>obiee-11g-upgrade-SNAPSHOT</version>
+  <version>2-SNAPSHOT</version>
   <description>A client library generated from the wsdl of CCCI's OBIEE instance </description>
   
   <parent>

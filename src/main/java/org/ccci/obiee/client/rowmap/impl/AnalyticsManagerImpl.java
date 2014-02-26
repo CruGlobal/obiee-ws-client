@@ -774,6 +774,14 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     }
 
     private Document parseXmlString(String xml, String description) {
+        if (xml == null) {
+            throw new DataRetrievalException(description + " is null");
+        }
+
+        if (xml.isEmpty()) {
+            throw new DataRetrievalException(description + " is empty");
+        }
+
         operationTimer.start();
         InputSource inputsource = new InputSource(new StringReader(xml));
         String parseErrorMessage = "cannot parse " + description;

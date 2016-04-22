@@ -34,7 +34,6 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import com.google.common.collect.Lists;
-import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.DataRetrievalException;
 import org.ccci.obiee.client.rowmap.Query;
@@ -50,6 +49,8 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
 import org.joda.time.format.ISODateTimeFormat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -112,7 +113,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
 
     private Exception recentException = null;
-    private Logger log = Logger.getLogger(getClass());
+    private Logger log = LoggerFactory.getLogger(getClass());
 
     /**
      * Assumes that the caller has logged us in to OBIEE already.  

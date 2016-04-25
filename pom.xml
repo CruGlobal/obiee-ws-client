@@ -210,8 +210,8 @@
 
     <dependency>
       <groupId>org.slf4j</groupId>
-      <artifactId>log4j-over-slf4j</artifactId>
-      <version>1.7.12</version>
+      <artifactId>slf4j-log4j12</artifactId>
+      <version>1.7.2</version>
       <scope>test</scope>
     </dependency>
 

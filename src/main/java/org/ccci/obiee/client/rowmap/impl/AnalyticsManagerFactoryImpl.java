@@ -7,7 +7,6 @@ import java.util.regex.Pattern;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.soap.SOAPFaultException;
 
-import org.apache.log4j.Logger;
 import org.ccci.obiee.client.init.AnswersServiceFactory;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
@@ -19,6 +18,8 @@ import oracle.bi.web.soap.SAWSessionService;
 import oracle.bi.web.soap.SAWSessionServiceSoap;
 import oracle.bi.web.soap.XmlViewService;
 import oracle.bi.web.soap.XmlViewServiceSoap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
 {
@@ -39,7 +40,7 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
     
     
     private String endpointBaseUrl;
-    private Logger log = Logger.getLogger(getClass());
+    private Logger log = LoggerFactory.getLogger(getClass());
     
     public AnalyticsManagerFactoryImpl(SAWSessionService sawSessionService, XmlViewService xmlViewService, ReportEditingService reportEditingService, String username, String password)
     {

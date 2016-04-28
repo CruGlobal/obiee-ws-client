@@ -4,17 +4,18 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.pool.PoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
-import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
 
 import com.google.common.base.Throwables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AnalyticsManagerPool
 {
     
     private final GenericObjectPool pool;
-    private Logger log = Logger.getLogger(this.getClass());
+    private Logger log = LoggerFactory.getLogger(this.getClass());
     
     public AnalyticsManagerPool(AnalyticsManagerFactory analyticsManagerFactory)
     {

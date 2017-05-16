@@ -6,13 +6,9 @@
   <version>3-SNAPSHOT</version>
   <description>A client library generated from the wsdl of CCCI's OBIEE instance </description>
   
-  <ciManagement>
-    <system>Bamboo</system>
-  </ciManagement>
-  
+
   <scm>
-    <connection>scm:svn:http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</connection>
-    <developerConnection>scm:svn:http://arkham.ccci.org/svn/java/trunk/commons/obiee-ws-client/</developerConnection>
+    <connection>scm:git:https://github.com/CruGlobal/obiee-ws-client.git</connection>
   </scm>
   
   <build>

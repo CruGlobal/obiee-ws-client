@@ -12,6 +12,14 @@
   </scm>
   
   <build>
+
+    <testResources>
+      <testResource>
+        <directory>${basedir}/src/test/resources</directory>
+        <filtering>true</filtering>
+      </testResource>
+    </testResources>
+
     <plugins>
 
       <plugin>
@@ -231,5 +239,8 @@
   <properties>
     <!-- TODO: remove when testsuite is usable by CI -->
     <maven.test.skip>true</maven.test.skip>
+
+    <answers.stage.username>STAFFWEBAPP</answers.stage.username>
+    <answers.stage.password><!-- set in settings.xml --></answers.stage.password>
   </properties>
 </project>

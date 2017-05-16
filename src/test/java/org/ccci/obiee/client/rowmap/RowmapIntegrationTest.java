@@ -72,12 +72,29 @@ public class RowmapIntegrationTest
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
 
-        assertThat(rows.size(), greaterThan(0));
+        assertThat(rows.size(), greaterThan(1000));
         assertThat(rows, everyItem(
             Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo(params.designationNumber))));
         printRowsize(rows);
     }
-    
+
+    @Test
+    public void testRetrieveWithMaxResults() throws Exception
+    {
+        SaiDonationParameters params = new SaiDonationParameters();
+        params.designationNumber = "0478406";
+
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        query.withSelection(params);
+        List<SaiDonationRow> rows = query.setMaxResults(1000)
+            .getResultList();
+
+        assertThat(rows.size(), equalTo(1000));
+        assertThat(rows, everyItem(
+            Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo(params.designationNumber))));
+        printRowsize(rows);
+    }
+
     @Test
     public void testRetrieveWithAccountNumberParameter() throws Exception
     {

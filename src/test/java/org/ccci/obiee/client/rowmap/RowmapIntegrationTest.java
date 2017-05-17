@@ -219,18 +219,18 @@ public class RowmapIntegrationTest
         {
             public void describeTo(Description description)
             {
-                description.appendText("is before or on").appendValue(date);
+                description.appendText("is on or before").appendValue(date);
             }
 
             @Override
             protected boolean matchesSafely(LocalDate item, Description mismatchDescription)
             {
-                boolean beforeOrOn = !item.isAfter(date);
-                if (!beforeOrOn)
+                boolean onOrBefore = !item.isAfter(date);
+                if (!onOrBefore)
                 {
                     mismatchDescription.appendValue(item);
                 }
-                return beforeOrOn;
+                return onOrBefore;
             }
         };
     }

@@ -32,7 +32,8 @@ public interface Query<T>
 
 
     /**
-     * Sets the maximum number or results to return. Defaults to returning all results.
+     * Sets the maximum number of results to return.
+     * Defaults to returning all results.
      * @param maxResults
      * @return this Query instance to enable convenient method chaining
      */

@@ -30,6 +30,15 @@ public interface Query<T>
      */
     public Query<T> orderBy(ReportColumn<T> sortColumn, SortDirection direction);
 
+
+    /**
+     * Sets the maximum number of results to return.
+     * Defaults to returning all results.
+     * @param maxResults
+     * @return this Query instance to enable convenient method chaining
+     */
+    public Query<T> setMaxResults(int maxResults);
+
     /**
      * Executes the query and returns the returned row object. This should be invoked when exactly one row in the returned
      * rowset is expected. If there are more than one row in the returned rowset, or if there are zero rows
@@ -49,5 +58,5 @@ public interface Query<T>
      * @throws RowmapConfigurationException if the given rowType is configured incorrectly
      */
     public List<T> getResultList();
-    
+
 }

@@ -6,7 +6,6 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.util.List;
 
@@ -14,8 +13,10 @@ import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.SaiDonationRow.SaiDonationParameters;
 import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerImpl;
 import org.ccci.obiee.client.rowmap.impl.StopwatchOperationTimer;
+import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
+import org.hamcrest.TypeSafeDiagnosingMatcher;
 import org.hamcrest.core.CombinableMatcher;
 import org.joda.time.LocalDate;
 import org.testng.annotations.AfterMethod;
@@ -71,12 +72,29 @@ public class RowmapIntegrationTest
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
 
-        assertThat(rows.size(), greaterThan(0));
+        assertThat(rows.size(), greaterThan(1000));
         assertThat(rows, everyItem(
             Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo(params.designationNumber))));
         printRowsize(rows);
     }
-    
+
+    @Test
+    public void testRetrieveWithMaxResults() throws Exception
+    {
+        SaiDonationParameters params = new SaiDonationParameters();
+        params.designationNumber = "0478406";
+
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        query.withSelection(params);
+        List<SaiDonationRow> rows = query.setMaxResults(1000)
+            .getResultList();
+
+        assertThat(rows.size(), equalTo(1000));
+        assertThat(rows, everyItem(
+            Matchers.<SaiDonationRow>hasProperty("designationNumber", equalTo(params.designationNumber))));
+        printRowsize(rows);
+    }
+
     @Test
     public void testRetrieveWithAccountNumberParameter() throws Exception
     {
@@ -125,14 +143,12 @@ public class RowmapIntegrationTest
 
     private CombinableMatcher<LocalDate> betweenBoundaries(SaiDonationParameters params)
     {
-        @SuppressWarnings("unchecked") // I don't know how to make the generics compiler happy here
-        Matcher<LocalDate> lowerBound = (Matcher<LocalDate>) greaterThanOrEqualTo(params.donationRangeBegin);
-        @SuppressWarnings("unchecked") // I don't know how to make the generics compiler happy here
-        Matcher<LocalDate> upperBound = (Matcher<LocalDate>) lessThanOrEqualTo(params.donationRangeEnd);
-        
-        return  Matchers.<LocalDate>both(lowerBound).and(upperBound);
+        Matcher<LocalDate> lowerBound = isOnOrAfter(params.donationRangeBegin);
+        Matcher<LocalDate> upperBound = isOnOrBefore(params.donationRangeEnd);
+
+        return  Matchers.both(lowerBound).and(upperBound);
     }
-    
+
     @Test(enabled = false)
     public void testSortByAmount() throws Exception
     {
@@ -169,12 +185,58 @@ public class RowmapIntegrationTest
         SaiDonationRow previous = null;
         for (SaiDonationRow row : rows) {
             if (previous != null)
-                assertThat(row.getTransactionDate(), greaterThanOrEqualTo(previous.getTransactionDate()));
+                assertThat(row.getTransactionDate(), isOnOrAfter(previous.getTransactionDate()));
             previous = row;
         }
         printRowsize(rows);
     }
-    
+
+    private Matcher<LocalDate> isOnOrAfter(final LocalDate date)
+    {
+        return new TypeSafeDiagnosingMatcher<LocalDate>()
+        {
+            public void describeTo(Description description)
+            {
+                description.appendText("is on or after").appendValue(date);
+            }
+
+            @Override
+            protected boolean matchesSafely(LocalDate item, Description mismatchDescription)
+            {
+                boolean onOrAfter = !item.isBefore(date);
+                if (!onOrAfter)
+                {
+                    mismatchDescription.appendValue(item);
+                }
+                return onOrAfter;
+            }
+        };
+    }
+
+    private Matcher<LocalDate> isOnOrBefore(final LocalDate date)
+    {
+        return new TypeSafeDiagnosingMatcher<LocalDate>()
+        {
+            public void describeTo(Description description)
+            {
+                description.appendText("is on or before").appendValue(date);
+            }
+
+            @Override
+            protected boolean matchesSafely(LocalDate item, Description mismatchDescription)
+            {
+                boolean onOrBefore = !item.isAfter(date);
+                if (!onOrBefore)
+                {
+                    mismatchDescription.appendValue(item);
+                }
+                return onOrBefore;
+            }
+        };
+    }
+
+
+
     @Test(enabled = true)
     public void testSortByAmountWithDesigParam() throws Exception
     {

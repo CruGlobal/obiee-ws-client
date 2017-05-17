@@ -1,39 +1,18 @@
 package org.ccci.obiee.client.rowmap.impl;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
-import javax.xml.XMLConstants;
-import javax.xml.namespace.NamespaceContext;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.ws.BindingProvider;
-import javax.xml.ws.soap.SOAPFaultException;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
-
+import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import oracle.bi.web.soap.QueryResults;
+import oracle.bi.web.soap.ReportEditingServiceSoap;
+import oracle.bi.web.soap.ReportParams;
+import oracle.bi.web.soap.ReportRef;
+import oracle.bi.web.soap.SAWSessionServiceSoap;
+import oracle.bi.web.soap.Variable;
+import oracle.bi.web.soap.XMLQueryExecutionOptions;
+import oracle.bi.web.soap.XMLQueryOutputFormat;
+import oracle.bi.web.soap.XmlViewServiceSoap;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.DataRetrievalException;
 import org.ccci.obiee.client.rowmap.Query;
@@ -60,18 +39,37 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 
-import com.google.common.base.Function;
-import com.google.common.base.Joiner;
-import com.google.common.collect.Iterables;
-import oracle.bi.web.soap.ReportEditingServiceSoap;
-import oracle.bi.web.soap.SAWSessionServiceSoap;
-import oracle.bi.web.soap.XmlViewServiceSoap;
-import oracle.bi.web.soap.QueryResults;
-import oracle.bi.web.soap.ReportParams;
-import oracle.bi.web.soap.ReportRef;
-import oracle.bi.web.soap.Variable;
-import oracle.bi.web.soap.XMLQueryExecutionOptions;
-import oracle.bi.web.soap.XMLQueryOutputFormat;
+import javax.xml.XMLConstants;
+import javax.xml.namespace.NamespaceContext;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.ws.BindingProvider;
+import javax.xml.ws.soap.SOAPFaultException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 
@@ -196,6 +194,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         private Object selection;
         private ReportColumn<T> sortColumn;
         private SortDirection direction;
+        private int maxResults = -1;
 
         public QueryImpl(ReportDefinition<T> reportDefinition)
         {
@@ -230,6 +229,13 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 			return this;
 		}
 
+        @Override
+        public Query<T> setMaxResults(int maxResults)
+        {
+            this.maxResults = maxResults;
+            return this;
+        }
+
         public List<T> getResultList()
         {
             checkOpen();
@@ -249,12 +255,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 String metadata = queryForMetadata(reportPathConfiguration);
                 metadataDocument = buildRowsetDocument(metadata);
 
-                String rowset = buildXmlReportAndQuery(reportPathConfiguration, params, metadataDocument);
+                String rowset = buildXmlReportAndQuery(reportPathConfiguration, params, metadataDocument, maxResults);
                 dataDocument = buildRowsetDocument(rowset);
             }
             else
             {
-                String rowset = queryForMetadataAndData(reportPathConfiguration, params);
+                String rowset = queryForMetadataAndData(reportPathConfiguration, params, maxResults);
                 dataDocument = buildRowsetDocument(rowset);
                 metadataDocument = dataDocument;
             }
@@ -269,7 +275,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         private String buildXmlReportAndQuery(
             ReportPath reportPathConfiguration,
             ReportParams params,
-            Document metadataDoc) {
+            Document metadataDoc,
+            int maxResults) {
+
             if (isEmptyRowset(metadataDoc)) {
                 throw new RowmapConfigurationException(
                     String.format(
@@ -288,7 +296,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 sortColumnId,
                 direction);
 
-            return queryForData(xmlReportWithAppropriateOrdering, params);
+            return queryForData(xmlReportWithAppropriateOrdering, params, maxResults);
         }
 
         private boolean isEmptyRowset(Document rowsetDocument) {
@@ -557,23 +565,41 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     	return results.getRowset();
     }
     
-    private String queryForData(String xmlReport, ReportParams reportParams)
+    private String queryForData(String xmlReport, ReportParams reportParams, int maxResults)
     {
         operationTimer.start();
         
         XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
-    	QueryResults results = queryXmlViewServiceWithXmlAndHandleExceptions(xmlReport, outputFormat, reportParams);
-        
+
+        QueryResults results = queryXmlViewServiceWithXmlAndHandleExceptions(
+            xmlReport,
+            outputFormat,
+            reportParams,
+            maxResults);
+
+        if (!results.isFinished())
+        {
+            String queryId = results.getQueryID();
+            xmlViewService.cancelQuery(queryId, sessionId);
+        }
+
     	operationTimer.stopAndLog("queried for data");
         return results.getRowset();
     }
 
     private QueryResults queryXmlViewServiceWithXmlAndHandleExceptions(
         String xmlReport,
-        XMLQueryOutputFormat outputFormat, ReportParams reportParams)
+        XMLQueryOutputFormat outputFormat,
+        ReportParams reportParams,
+        int maxRowsPerPage)
     {
         XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
-        executionOptions.setMaxRowsPerPage(-1);
+        executionOptions.setMaxRowsPerPage(maxRowsPerPage);
+
+        // note: the docs I've found don't explain this setting, but it seems
+        // that maxRowsPerPage is ignored when it is false.
+        executionOptions.setAsync(maxRowsPerPage != -1);
+
         executionOptions.setPresentationInfo(true);
 
         ReportRef report = new ReportRef();
@@ -581,7 +607,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     	try
     	{
-            return xmlViewService.executeXMLQuery(report, outputFormat, executionOptions, reportParams, sessionId);
+            return xmlViewService.executeXMLQuery(
+                report,
+                outputFormat,
+                executionOptions,
+                reportParams,
+                sessionId);
         }
         catch (SOAPFaultException e)
         {
@@ -602,7 +633,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
     }
     
-    private String queryForMetadataAndData(ReportPath reportPathConfiguration, ReportParams reportParams)
+    private String queryForMetadataAndData(
+        ReportPath reportPathConfiguration,
+        ReportParams reportParams,
+        int maxRowsPerPage)
     {
         operationTimer.start();
         ReportRef report = new ReportRef();
@@ -610,7 +644,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         
         XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA_AND_DATA;
         XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
-        executionOptions.setMaxRowsPerPage(-1);
+        executionOptions.setMaxRowsPerPage(maxRowsPerPage);
+
+        // note: the docs I've found don't explain this setting, but it seems
+        // that maxRowsPerPage is ignored when it is false.
+        executionOptions.setAsync(maxRowsPerPage != -1);
+
         executionOptions.setPresentationInfo(true);
         QueryResults queryResults = queryXmlViewServiceAndHandleExceptions(
             reportPathConfiguration, 
@@ -618,6 +657,13 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             report, 
             outputFormat,
             executionOptions);
+
+        if (!queryResults.isFinished())
+        {
+            String queryId = queryResults.getQueryID();
+            xmlViewService.cancelQuery(queryId, sessionId);
+        }
+
         operationTimer.stopAndLog("queried for metadata and data");
         return queryResults.getRowset();
     }

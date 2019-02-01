@@ -27,6 +27,7 @@ public class PortConfigurer
     public void setTimeouts(int connectTimeout, int readTimeout)
     {
         setSunJaxWsTimeouts(connectTimeout, readTimeout);
+        setSunJdkTimeouts(connectTimeout, readTimeout);
         setCxfTimeouts(connectTimeout, readTimeout);
     }
     
@@ -56,6 +57,22 @@ public class PortConfigurer
     private void setSunJaxWsConnectTimeout(int connectTimeout)
     {
         port.getRequestContext().put(BindingProviderProperties.CONNECT_TIMEOUT, connectTimeout);
+    }
+
+    private void setSunJdkTimeouts(int connectTimeout, int readTimeout)
+    {
+        setSunJdkConnectTimeout(connectTimeout);
+        setSunJdkReadTimeout(readTimeout);
+    }
+
+    private void setSunJdkReadTimeout(int readTimeout)
+    {
+        port.getRequestContext().put("com.sun.xml.internal.ws.request.timeout", readTimeout);
+    }
+
+    private void setSunJdkConnectTimeout(int connectTimeout)
+    {
+        port.getRequestContext().put("com.sun.xml.internal.ws.connect.timeout", connectTimeout);
     }
 
     private void setCxfReadTimeout(int readTimeout)

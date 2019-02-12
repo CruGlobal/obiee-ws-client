@@ -538,9 +538,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch(IllegalAccessException e)
         {
-            AssertionError assertionError = new AssertionError("We called field.setAccessible(true)");
-            assertionError.initCause(e);
-            throw assertionError;
+            throw new AssertionError("We called field.setAccessible(true)", e);
         }
         return value;
     }

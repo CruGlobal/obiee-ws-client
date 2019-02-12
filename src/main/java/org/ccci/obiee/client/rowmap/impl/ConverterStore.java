@@ -33,7 +33,7 @@ public class ConverterStore
             .toFormatter();
     }
 
-    private final Map<Class<?>, Converter<?>> converters = new HashMap<Class<?>, Converter<?>>();
+    private final Map<Class<?>, Converter<?>> converters = new HashMap<>();
     
     
     /**

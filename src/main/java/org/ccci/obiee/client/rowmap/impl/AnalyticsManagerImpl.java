@@ -199,7 +199,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         checkOpen();
         if (reportDefinition == null)
             throw new NullPointerException("reportDefinition is null");
-        return new QueryImpl<T>(reportDefinition);
+        return new QueryImpl<>(reportDefinition);
     }
     
     class QueryImpl<T> implements Query<T>
@@ -340,7 +340,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             final Span span = tracer.buildSpan("build-results").start();
             try (Scope ignored = tracer.scopeManager().activate(span, false))
             {
-                List<T> results = new ArrayList<T>();
+                List<T> results = new ArrayList<>();
                 for (Node row : Doms.each(rows))
                 {
                     T rowInstance = rowBuilder.buildRowInstance(row);
@@ -359,7 +359,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(doc);
             
-            Map<ReportColumnId, String> elementNamesPerColumnId = new HashMap<ReportColumnId, String>();
+            Map<ReportColumnId, String> elementNamesPerColumnId = new HashMap<>();
             
             for (Node node : Doms.each(columnDefinitionXsdElements) )
             {
@@ -374,7 +374,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             ConverterStore converters = reportDefinition.getConverterStore();
             ConverterStore reportConverterStore = converterStore.copyAndAdd(converters);
             
-            return new RowBuilder<T>(elementNamesPerColumnId, reportDefinition.getRowType(), reportConverterStore);
+            return new RowBuilder<>(elementNamesPerColumnId, reportDefinition.getRowType(), reportConverterStore);
         }
         
         
@@ -861,7 +861,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     private Map<String, Object> asMap(List<Variable> variables)
     {
-        Map<String, Object> variableMap = new HashMap<String, Object>();
+        Map<String, Object> variableMap = new HashMap<>();
         for (Variable variable : variables)
         {
             variableMap.put(variable.getName(), variable.getValue());

@@ -76,7 +76,7 @@ public class ReportDefinition<T>
     
     private <U extends Enum<U>> void addEnumConverter(Class<U> asEnumType, ConverterStore store)
     {
-        store.addConverter(asEnumType, new EnumConverter<U>(asEnumType));
+        store.addConverter(asEnumType, new EnumConverter<>(asEnumType));
     }
 
 
@@ -91,7 +91,7 @@ public class ReportDefinition<T>
 
     private Map<String, ReportColumn<T>> buildColumns(Class<T> rowType)
     {
-        Map<String, ReportColumn<T>> columns = new HashMap<String, ReportColumn<T>>();
+        Map<String, ReportColumn<T>> columns = new HashMap<>();
         Class<?> clazz = rowType;
         while(!clazz.getName().equals("java.lang.Object"))
         {
@@ -99,7 +99,7 @@ public class ReportDefinition<T>
             {
                 if (field.isAnnotationPresent(Column.class))
                 {
-                    ReportColumn<T> column = new ReportColumn<T>(field, rowType);
+                    ReportColumn<T> column = new ReportColumn<>(field, rowType);
                     columns.put(column.getName(), column);
                 }
             }
@@ -130,7 +130,7 @@ public class ReportDefinition<T>
 
     public Set<ReportColumn<T>> getColumns()
     {
-        return new HashSet<ReportColumn<T>>(columns.values());
+        return new HashSet<>(columns.values());
     }
 
     public Class<T> getRowType()

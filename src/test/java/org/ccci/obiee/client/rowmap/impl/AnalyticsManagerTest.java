@@ -126,7 +126,7 @@ public class AnalyticsManagerTest
     @ReportPath("/not/real")
     public static class TestRow
     {
-        public static ReportDefinition<TestRow> definition = new ReportDefinition<TestRow>(TestRow.class); 
+        public static ReportDefinition<TestRow> definition = new ReportDefinition<>(TestRow.class);
 
         @Column(tableHeading = "Designation")
         private String designationNumber;

@@ -11,7 +11,7 @@ import org.ccci.obiee.client.rowmap.annotation.Scale;
 @ReportPath("/shared/CCCi/SSW/SAI Donations")
 public class SaiDonationRow
 {
-    public static ReportDefinition<SaiDonationRow> report = new ReportDefinition<SaiDonationRow>(SaiDonationRow.class);
+    public static ReportDefinition<SaiDonationRow> report = new ReportDefinition<>(SaiDonationRow.class);
 
     public static class SaiDonationParameters
     {

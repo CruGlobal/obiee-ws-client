@@ -29,13 +29,13 @@ public class RowBuilderTest
     @Test
     public void testRowBuilderWithSingleResult() throws ParserConfigurationException, XPathExpressionException
     {
-        Map<ReportColumnId, String> columnToNodeNameMapping = new HashMap<ReportColumnId, String>();
+        Map<ReportColumnId, String> columnToNodeNameMapping = new HashMap<>();
         
         columnToNodeNameMapping.put(
             new ReportColumnId("Fruit", "Name"), 
             "Column0");
         
-        fruitBuilder = new RowBuilder<Fruit>(columnToNodeNameMapping, Fruit.class, ConverterStore.buildDefault());
+        fruitBuilder = new RowBuilder<>(columnToNodeNameMapping, Fruit.class, ConverterStore.buildDefault());
         
         Node row = buildBananaRow();
 

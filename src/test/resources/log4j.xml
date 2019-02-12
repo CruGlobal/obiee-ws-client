@@ -26,7 +26,7 @@
       <level value="info"/>
    </logger>
 
-   <logger name="org.ccci.obiee.client.rowmap.impl.StopwatchOperationTimer">
+   <logger name="org.ccci.obiee.client.rowmap.StopwatchTracer">
       <level value="debug"/>
    </logger>
    

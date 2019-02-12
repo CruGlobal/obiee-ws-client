@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import io.opentracing.Tracer;
 import org.ccci.obiee.client.init.AnswersServiceFactory;
 import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerFactoryImpl;
 import org.ccci.obiee.client.rowmap.impl.RowmapConfiguration;
@@ -11,10 +12,12 @@ import org.ccci.obiee.client.rowmap.impl.RowmapConfiguration;
 public class AnalyticsManagerConfigurer {
 	
 	private final AnalyticsManagerFactory factory;
-    
-    public AnalyticsManagerConfigurer()
+    private final Tracer tracer;
+
+    public AnalyticsManagerConfigurer(Tracer tracer)
     {
-    	Properties obieeProperties;
+        this.tracer = tracer;
+        Properties obieeProperties;
     	try
     	{
     		obieeProperties = loadObieeProperties();
@@ -29,7 +32,8 @@ public class AnalyticsManagerConfigurer {
     	
         factory = new AnalyticsManagerFactoryImpl(
             serviceFactory,
-			config);
+			config,
+            this.tracer);
     }
 
     private RowmapConfiguration buildRowmapConfiguration(Properties obieeProperties)

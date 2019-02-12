@@ -1,9 +1,9 @@
 package org.ccci.obiee.client.rowmap.impl;
 
-import com.google.common.base.Function;
-import com.google.common.base.Joiner;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
 import oracle.bi.web.soap.QueryResults;
 import oracle.bi.web.soap.ReportEditingServiceSoap;
 import oracle.bi.web.soap.ReportParams;
@@ -71,6 +71,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static org.ccci.obiee.client.rowmap.impl.Tracing.buildTopLevelSpan;
+
 /**
  * 
  * @author Matt Drees
@@ -104,11 +106,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     private final DocumentBuilder builder;
     private final ConverterStore converterStore;
+    private final Tracer tracer;
 
     private final ReportEditingServiceSoap reportEditingService;
-    private OperationTimer operationTimer = new NoOpOperationTimer();
     private boolean closed = false;
-
 
     private Exception recentException = null;
     private Logger log = LoggerFactory.getLogger(getClass());
@@ -119,22 +120,27 @@ public class AnalyticsManagerImpl implements AnalyticsManager
      * @param sawSessionService used for logout
      * @param xmlViewService used for retrieving report queries
      * @param converterStore used to convert field values
+     * @param tracer used for APM
      */
-    public AnalyticsManagerImpl(String sessionId, 
-                                SAWSessionServiceSoap sawSessionService,
-                                XmlViewServiceSoap xmlViewService,
-                                ReportEditingServiceSoap reportEditingService,
-                                ConverterStore converterStore)
+    public AnalyticsManagerImpl(
+        String sessionId,
+        SAWSessionServiceSoap sawSessionService,
+        XmlViewServiceSoap xmlViewService,
+        ReportEditingServiceSoap reportEditingService,
+        ConverterStore converterStore,
+        Tracer tracer)
     {
+
         this.sessionId = sessionId;
         this.sawSessionService = sawSessionService;
         this.xmlViewService = xmlViewService;
         this.reportEditingService = reportEditingService;
         this.converterStore = converterStore;
+        this.tracer = tracer;
 
         xpathFactory = XPathFactory.newInstance();
         buildXpathExpressions();
-        
+
         DocumentBuilderFactory factory;
         factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);
@@ -169,9 +175,17 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     {
         checkOpen();
         closed = true;
-        log.debug("logging off session " + sessionId);
-        sawSessionService.logoff(sessionId);
-        log.debug("logoff successful");
+        final Span span = buildTopLevelSpan(tracer, "logoff");
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            log.debug("logging off session " + sessionId);
+            sawSessionService.logoff(sessionId);
+            log.debug("logoff successful");
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private void checkOpen()
@@ -238,38 +252,54 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
         public List<T> getResultList()
         {
-            checkOpen();
-            Class<T> rowType = reportDefinition.getRowType();
-            ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
-
-            Document dataDocument;
-            Document metadataDocument;
-            ReportParams params = buildReportParams(selection);
-            if(sortColumn != null)
+            final Span span = buildTopLevelSpan(tracer, "get-result-list");
+            try (Scope ignored = tracer.scopeManager().activate(span, false))
             {
-                if(direction == null)
+                checkOpen();
+                Class<T> rowType = reportDefinition.getRowType();
+                ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
+                overrideResourceName(span, reportPathConfiguration.value());
+
+                Document dataDocument;
+                Document metadataDocument;
+                ReportParams params = buildReportParams(selection);
+                if (sortColumn != null)
                 {
-                    direction = SortDirection.ASCENDING;
+                    if (direction == null)
+                    {
+                        direction = SortDirection.ASCENDING;
+                    }
+
+                    String metadata = queryForMetadata(reportPathConfiguration);
+                    metadataDocument = buildRowsetDocument(metadata);
+
+                    String rowset = buildXmlReportAndQuery(
+                        reportPathConfiguration,
+                        params,
+                        metadataDocument,
+                        maxResults
+                    );
+                    dataDocument = buildRowsetDocument(rowset);
                 }
-                
-                String metadata = queryForMetadata(reportPathConfiguration);
-                metadataDocument = buildRowsetDocument(metadata);
+                else
+                {
+                    String rowset = queryForMetadataAndData(reportPathConfiguration, params, maxResults);
+                    dataDocument = buildRowsetDocument(rowset);
+                    metadataDocument = dataDocument;
+                }
 
-                String rowset = buildXmlReportAndQuery(reportPathConfiguration, params, metadataDocument, maxResults);
-                dataDocument = buildRowsetDocument(rowset);
+                if (isEmptyRowset(dataDocument))
+                {
+                    return Lists.newArrayList();
+                }
+                RowBuilder<T> rowBuilder = buildRowBuilder(metadataDocument);
+                NodeList rows = getRows(dataDocument);
+                return buildResults(rowBuilder, rows);
             }
-            else
+            finally
             {
-                String rowset = queryForMetadataAndData(reportPathConfiguration, params, maxResults);
-                dataDocument = buildRowsetDocument(rowset);
-                metadataDocument = dataDocument;
+                span.finish();
             }
-
-            if (isEmptyRowset(dataDocument))
-                return Lists.newArrayList();
-            RowBuilder<T> rowBuilder = buildRowBuilder(metadataDocument);
-            NodeList rows = getRows(dataDocument);
-            return buildResults(rowBuilder, rows);
         }
 
         private String buildXmlReportAndQuery(
@@ -306,17 +336,24 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
         private List<T> buildResults(RowBuilder<T> rowBuilder, NodeList rows)
         {
-            operationTimer.start();
-            List<T> results = new ArrayList<T>();
-            for (Node row : Doms.each(rows))
+            final Span span = tracer.buildSpan("build-results").start();
+            try (Scope ignored = tracer.scopeManager().activate(span, false))
             {
-                T rowInstance = rowBuilder.buildRowInstance(row);
-                results.add(rowInstance);
+                List<T> results = new ArrayList<T>();
+                for (Node row : Doms.each(rows))
+                {
+                    T rowInstance = rowBuilder.buildRowInstance(row);
+                    results.add(rowInstance);
+                }
+                return results;
             }
-            operationTimer.stopAndLog("result list built");
-            return results;
+            finally
+            {
+                span.finish();
+            }
+
         }
-        
+
         RowBuilder<T> buildRowBuilder(Document doc)
         {
             NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(doc);
@@ -517,74 +554,95 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         String sortColumnId,
         SortDirection direction)
     {
-        operationTimer.start();
-    	ReportRef report = new ReportRef();
-        report.setReportPath(reportPathConfiguration.value());
-        
-        String xml;
-        try
+        String xml = buildXmlFromParams(reportPathConfiguration, params);
+        return prepareXml(xml, sortColumnId, direction);
+    }
+
+    private String buildXmlFromParams(ReportPath reportPathConfiguration, ReportParams params)
+    {
+        final Span span = tracer.buildSpan("apply-report-params").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
-            xml = (String) reportEditingService.applyReportParams(report, params, true, sessionId);
-        }
-        catch (SOAPFaultException e)
-        {
-            recentException = e;
-            throw new DataRetrievalException(
+            ReportRef report = new ReportRef();
+            report.setReportPath(reportPathConfiguration.value());
+
+            try
+            {
+                return (String) reportEditingService.applyReportParams(report, params, true, sessionId);
+            }
+            catch (SOAPFaultException e)
+            {
+                recentException = e;
+                throw new DataRetrievalException(
                     String.format(
                         "unable to generate xml for report %s with %s; details follow:\n%s",
                         reportPathConfiguration.value(),
                         formatParamsAsString(params),
-                        SoapFaults.getDetailsAsString(e.getFault())), 
-                    e);
+                        SoapFaults.getDetailsAsString(e.getFault())
+                    ),
+                    e
+                );
+            }
         }
-
-        operationTimer.stopAndLog("queried for xml");
-        return prepareXml(xml, sortColumnId, direction);
+        finally
+        {
+            span.finish();
+        }
     }
-    
+
     private String queryForMetadata(ReportPath reportPathConfiguration)
     {
-        operationTimer.start();
-        
-    	XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA;
-        XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
-        executionOptions.setMaxRowsPerPage(-1);
-        executionOptions.setPresentationInfo(true);
-        
-        ReportRef report = new ReportRef();
-        report.setReportPath(reportPathConfiguration.value());
+        final Span span = tracer.buildSpan("query-for-metadata").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA;
+            XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
+            executionOptions.setMaxRowsPerPage(-1);
+            executionOptions.setPresentationInfo(true);
 
-        QueryResults results = queryXmlViewServiceAndHandleExceptions(
-           reportPathConfiguration,
-           new ReportParams(),
-           report,
-           outputFormat,
-           executionOptions);
-        operationTimer.stopAndLog("queried for metadata");
+            ReportRef report = new ReportRef();
+            report.setReportPath(reportPathConfiguration.value());
 
-    	return results.getRowset();
+            QueryResults results = queryXmlViewServiceAndHandleExceptions(
+                reportPathConfiguration,
+                new ReportParams(),
+                report,
+                outputFormat,
+                executionOptions
+            );
+            return results.getRowset();
+        }
+        finally
+        {
+            span.finish();
+        }
     }
-    
+
     private String queryForData(String xmlReport, ReportParams reportParams, int maxResults)
     {
-        operationTimer.start();
-        
-        XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
-
-        QueryResults results = queryXmlViewServiceWithXmlAndHandleExceptions(
-            xmlReport,
-            outputFormat,
-            reportParams,
-            maxResults);
-
-        if (!results.isFinished())
+        final Span span = tracer.buildSpan("query-for-data").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
-            String queryId = results.getQueryID();
-            xmlViewService.cancelQuery(queryId, sessionId);
-        }
+            XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
 
-    	operationTimer.stopAndLog("queried for data");
-        return results.getRowset();
+            QueryResults results = queryXmlViewServiceWithXmlAndHandleExceptions(
+                xmlReport,
+                outputFormat,
+                reportParams,
+                maxResults
+            );
+
+            if (!results.isFinished())
+            {
+                String queryId = results.getQueryID();
+                xmlViewService.cancelQuery(queryId, sessionId);
+            }
+            return results.getRowset();
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private QueryResults queryXmlViewServiceWithXmlAndHandleExceptions(
@@ -632,40 +690,46 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                                   "%s", xmlReport), e);
         }
     }
-    
+
     private String queryForMetadataAndData(
         ReportPath reportPathConfiguration,
         ReportParams reportParams,
         int maxRowsPerPage)
     {
-        operationTimer.start();
-        ReportRef report = new ReportRef();
-        report.setReportPath(reportPathConfiguration.value());
-        
-        XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA_AND_DATA;
-        XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
-        executionOptions.setMaxRowsPerPage(maxRowsPerPage);
-
-        // note: the docs I've found don't explain this setting, but it seems
-        // that maxRowsPerPage is ignored when it is false.
-        executionOptions.setAsync(maxRowsPerPage != -1);
-
-        executionOptions.setPresentationInfo(true);
-        QueryResults queryResults = queryXmlViewServiceAndHandleExceptions(
-            reportPathConfiguration, 
-            reportParams, 
-            report, 
-            outputFormat,
-            executionOptions);
-
-        if (!queryResults.isFinished())
+        final Span span = tracer.buildSpan("query-for-metadata-and-data").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
-            String queryId = queryResults.getQueryID();
-            xmlViewService.cancelQuery(queryId, sessionId);
-        }
+            ReportRef report = new ReportRef();
+            report.setReportPath(reportPathConfiguration.value());
 
-        operationTimer.stopAndLog("queried for metadata and data");
-        return queryResults.getRowset();
+            XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA_AND_DATA;
+            XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
+            executionOptions.setMaxRowsPerPage(maxRowsPerPage);
+
+            // note: the docs I've found don't explain this setting, but it seems
+            // that maxRowsPerPage is ignored when it is false.
+            executionOptions.setAsync(maxRowsPerPage != -1);
+
+            executionOptions.setPresentationInfo(true);
+            QueryResults queryResults = queryXmlViewServiceAndHandleExceptions(
+                reportPathConfiguration,
+                reportParams,
+                report,
+                outputFormat,
+                executionOptions
+            );
+
+            if (!queryResults.isFinished())
+            {
+                String queryId = queryResults.getQueryID();
+                xmlViewService.cancelQuery(queryId, sessionId);
+            }
+            return queryResults.getRowset();
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private QueryResults queryXmlViewServiceAndHandleExceptions(
@@ -807,17 +871,32 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         return variableMap;
     }
-    
 
 
     Document buildRowsetDocument(String rowset)
     {
-        return parseXmlString(rowset, "rowset from OBIEE");
+        final Span span = tracer.buildSpan("parse-rowset-document").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            return parseXmlString(rowset, "rowset from OBIEE");
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private Document buildXmlReportDocument(String report)
     {
-        return parseXmlString(report, "xml report definition");
+        final Span span = tracer.buildSpan("parse-report-document").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            return parseXmlString(report, "xml report definition");
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private Document parseXmlString(String xml, String description) {
@@ -829,14 +908,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             throw new DataRetrievalException(description + " is empty");
         }
 
-        operationTimer.start();
         InputSource inputsource = new InputSource(new StringReader(xml));
         String parseErrorMessage = "cannot parse " + description;
         try
         {
-            Document document = builder.parse(inputsource);
-            operationTimer.stopAndLog("parsed xml document: " + description);
-            return document;
+            return builder.parse(inputsource);
         }
         catch (SAXParseException e)
         {
@@ -862,10 +938,15 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     NodeList getColumnSchemaNodesFromPreamble(Document doc)
     {
-        operationTimer.start();
-        NodeList nodeList = evaluateXsdXPathAndHandleExceptions(doc);
-        operationTimer.stopAndLog("executed schema preamble xpath query");
-        return nodeList;
+        final Span span = tracer.buildSpan("xpath-for-schema").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            return evaluateXsdXPathAndHandleExceptions(doc);
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private NodeList evaluateXsdXPathAndHandleExceptions(Document doc)
@@ -880,13 +961,18 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             throw new RuntimeException("unable to evaluate xpath expression on document", e);
         }
     }
-    
+
     NodeList getRows(Document doc)
     {
-        operationTimer.start();
-        NodeList nodeList = executeRowXPathQueryAndHandleExceptions(doc);
-        operationTimer.stopAndLog("executed row xpath query");
-        return nodeList;
+        final Span span = tracer.buildSpan("xpath-for-data").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            return executeRowXPathQueryAndHandleExceptions(doc);
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private NodeList executeRowXPathQueryAndHandleExceptions(Document doc)
@@ -949,13 +1035,18 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     private void validateAnswersSession()
     {
-        try
+        final Span span = buildTopLevelSpan(tracer, "get-current-user");
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
             sawSessionService.getCurUser(sessionId);
         }
         catch (RuntimeException e)
         {
             throw new IllegalStateException("manager is no longer usable", e);
+        }
+        finally
+        {
+            span.finish();
         }
     }
 
@@ -969,7 +1060,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         executionOptions.setMaxRowsPerPage(1);
         executionOptions.setPresentationInfo(true);
         ReportParams reportParams = new ReportParams();
-        try
+        final Span span = buildTopLevelSpan(tracer, "validate-bi-server-session");
+        overrideResourceName(span, VALIDATION_REPORT_PATH);
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
         	xmlViewService.executeXMLQuery(
                 report, 
@@ -987,14 +1080,17 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                         SoapFaults.getDetailsAsString(e.getFault())), 
                     e);
         }
+        finally
+        {
+            span.finish();
+        }
     }
 
-
-    public void setOperationTimer(OperationTimer operationTimer)
+    private void overrideResourceName(Span span, String resourceName)
     {
-        this.operationTimer = operationTimer;
+        span.setTag("resource.name", resourceName);
     }
-    
+
 
     public void setQueryTimeout(long time, TimeUnit unit)
     {

@@ -1,18 +1,6 @@
 package org.ccci.obiee.client.rowmap.impl;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigDecimal;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
+import io.opentracing.noop.NoopTracerFactory;
 import org.ccci.obiee.client.rowmap.ReportDefinition;
 import org.ccci.obiee.client.rowmap.SortDirection;
 import org.ccci.obiee.client.rowmap.annotation.Column;
@@ -25,6 +13,18 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+
 public class AnalyticsManagerTest
 {
 
@@ -33,7 +33,13 @@ public class AnalyticsManagerTest
     @BeforeMethod
     public void createManager()
     {
-        manager = new AnalyticsManagerImpl(null, null, null, null, ConverterStore.buildDefault());
+        manager = new AnalyticsManagerImpl(
+            null,
+            null,
+            null,
+            null,
+            ConverterStore.buildDefault(),
+            NoopTracerFactory.create());
     }
     
     

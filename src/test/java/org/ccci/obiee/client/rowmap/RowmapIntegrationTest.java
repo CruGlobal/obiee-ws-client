@@ -9,10 +9,9 @@ import static org.hamcrest.Matchers.hasSize;
 
 import java.util.List;
 
+import io.opentracing.Tracer;
 import org.apache.log4j.Logger;
 import org.ccci.obiee.client.rowmap.SaiDonationRow.SaiDonationParameters;
-import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerImpl;
-import org.ccci.obiee.client.rowmap.impl.StopwatchOperationTimer;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
@@ -29,18 +28,18 @@ public class RowmapIntegrationTest
 
     AnalyticsManagerFactory factory;
     AnalyticsManager manager;
-    
+
     @BeforeClass
     public void setupFactory()
     {
-        factory = new AnalyticsManagerConfigurer().getAMFactory();
+        Tracer tracer = new StopwatchTracer();
+        factory = new AnalyticsManagerConfigurer(tracer).getAMFactory();
     }
     
     @BeforeMethod
     public void setupManager()
     {
         manager = factory.createAnalyticsManager();
-        ((AnalyticsManagerImpl) manager).setOperationTimer(new StopwatchOperationTimer());
     }
     
     @AfterMethod

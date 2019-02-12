@@ -50,7 +50,7 @@ public class ConverterStore
     }
     
     /**
-     * Should only be called during initially construction
+     * Should only be called during initial construction
      */
     public <T> void addConverter(Class<T> fieldType, Converter<T> converter)
     {

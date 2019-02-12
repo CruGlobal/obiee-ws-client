@@ -70,6 +70,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.ccci.obiee.client.rowmap.impl.JodaTimeAvailability.isJodaAvailable;
 import static org.ccci.obiee.client.rowmap.impl.Tracing.buildTopLevelSpan;
@@ -499,8 +500,9 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             @SuppressWarnings("unchecked") //this is actually checked in the if() statement directly above
             Set<String> set = (Set<String>) value;
-            Iterable<String> quotedStrings = Iterables.transform(set, input -> "'" + input + "'");
-            return Joiner.on(",").join(quotedStrings);
+            return set.stream()
+                .map(input -> "'" + input + "'")
+                .collect(Collectors.joining(","));
         }
         else
         {

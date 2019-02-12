@@ -35,7 +35,8 @@ public class AnalyticsManagerPool
         }
         catch (Exception e)
         {
-            throw Throwables.propagate(e);
+            Throwables.propagateIfPossible(e);
+            throw new RuntimeException(e);
         }
     }
     
@@ -48,7 +49,8 @@ public class AnalyticsManagerPool
         catch (Exception e)
         //GeneriObjectPool#returnObject(Object) doesn't actually throw exceptions
         {
-            throw Throwables.propagate(e);
+            Throwables.propagateIfPossible(e);
+            throw new RuntimeException(e);
         }
     }
     

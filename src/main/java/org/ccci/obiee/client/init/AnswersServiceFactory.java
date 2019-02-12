@@ -37,15 +37,19 @@ public class AnswersServiceFactory
         }
         catch (InstantiationException e)
         {
-            throw Throwables.propagate(e);
+            Throwables.throwIfUnchecked(e);
+            throw new RuntimeException(e);
         }
         catch (IllegalAccessException e)
         {
-            throw Throwables.propagate(e);
+            Throwables.propagateIfPossible(e);
+            throw new RuntimeException(e);
         }
         catch (InvocationTargetException e)
         {
-            throw Throwables.propagate(e.getCause());
+            Throwable throwable = e.getCause();
+            Throwables.propagateIfPossible(throwable);
+            throw new RuntimeException(throwable);
         }
     }
 

@@ -133,12 +133,6 @@
     </dependency>
 
     <dependency>
-      <groupId>joda-time</groupId>
-      <artifactId>joda-time</artifactId>
-      <version>2.9.3</version>
-    </dependency>
-
-    <dependency>
       <groupId>io.opentracing</groupId>
       <artifactId>opentracing-api</artifactId>
       <version>${opentracing.version}</version>
@@ -148,6 +142,13 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <version>${slf4j.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+      <version>2.9.9</version>
+      <optional>true</optional>
     </dependency>
 
     <dependency>

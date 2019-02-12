@@ -1,20 +1,37 @@
 package org.ccci.obiee.client.rowmap.impl;
 
+import org.ccci.obiee.client.rowmap.Converter;
+import org.ccci.obiee.client.rowmap.annotation.Scale;
+
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.ccci.obiee.client.rowmap.Converter;
-import org.ccci.obiee.client.rowmap.annotation.Scale;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.LocalDate;
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.ISODateTimeFormat;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
+import static org.ccci.obiee.client.rowmap.impl.JodaTimeAvailability.isJodaAvailable;
 
 public class ConverterStore
 {
+
+    /** A formatter that supports an ISO date, with an optional time component */
+    static final DateTimeFormatter ISO_LOCAL_DATE_OPTIONAL_TIME;
+    static {
+        ISO_LOCAL_DATE_OPTIONAL_TIME = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .append(ISO_LOCAL_DATE)
+            .optionalStart()
+            .appendLiteral('T')
+            .append(ISO_LOCAL_TIME)
+            .toFormatter();
+    }
 
     private final Map<Class<?>, Converter<?>> converters = new HashMap<Class<?>, Converter<?>>();
     
@@ -98,26 +115,19 @@ public class ConverterStore
         
         converterStore.addConverter(LocalDate.class, new Converter<LocalDate>()
             {
-                DateTimeFormatter isoFormatter = ISODateTimeFormat.localDateOptionalTimeParser();
-                
                 public LocalDate convert(String xmlValue, Field field)
                 {
                     if (empty(xmlValue)) return null;
-                    DateTime parsedDateTime = isoFormatter.parseDateTime(xmlValue);
-                    return parsedDateTime.toLocalDate();
+                    return LocalDate.parse(xmlValue, ISO_LOCAL_DATE_OPTIONAL_TIME);
                 }
             });
         
-        converterStore.addConverter(DateTime.class, new Converter<DateTime>()
+        converterStore.addConverter(LocalDateTime.class, new Converter<LocalDateTime>()
             {
-                DateTimeFormatter isoFormatter = 
-                    ISODateTimeFormat.dateHourMinuteSecond()
-                        .withZone(DateTimeZone.UTC);
-                
-                public DateTime convert(String xmlValue, Field field)
+                public LocalDateTime convert(String xmlValue, Field field)
                 {
                     if (empty(xmlValue)) return null;
-                    return isoFormatter.parseDateTime(xmlValue);
+                    return LocalDateTime.parse(xmlValue, ISO_LOCAL_DATE_TIME.withZone(ZoneOffset.UTC));
                 }
             });
         
@@ -140,8 +150,15 @@ public class ConverterStore
                     }
                 }
             });
+
+        if (isJodaAvailable())
+        {
+            JodaConverters.addJodaTimeConverters(converterStore);
+        }
+
         return converterStore;
     }
+
 
     private static boolean empty(String string)
     {

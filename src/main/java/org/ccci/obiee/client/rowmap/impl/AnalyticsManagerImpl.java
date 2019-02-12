@@ -24,10 +24,6 @@ import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
 import org.ccci.obiee.client.rowmap.util.Doms;
 import org.ccci.obiee.client.rowmap.util.SoapFaults;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.LocalDate;
-import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Attr;
@@ -63,7 +59,11 @@ import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -71,6 +71,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import static org.ccci.obiee.client.rowmap.impl.JodaTimeAvailability.isJodaAvailable;
 import static org.ccci.obiee.client.rowmap.impl.Tracing.buildTopLevelSpan;
 
 /**
@@ -472,13 +473,17 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             return convertLocalDateToXmlDate(value);
         }
-        else if(fieldType.equals(DateTime.class))
+        else if(fieldType.equals(LocalDateTime.class))
         {
             return convertDateTimeToUTCDate(value);
         }
         else if(fieldType.equals(Set.class) && field.getGenericType() instanceof ParameterizedType)
         {
             return convertSetToInClauseList(field, value);
+        }
+        else if(isJodaAvailable() && JodaConverters.isJodaField(fieldType))
+        {
+            return JodaConverters.convertJodaValueToReportVariableValue(value);
         }
         else
         {
@@ -513,11 +518,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     /**
      * It's important to send dates oriented to UTC, since the dates are stored in the data warehouse as UTC.
      */
-    private Object convertDateTimeToUTCDate(Object value)
+    Date convertDateTimeToUTCDate(Object value)
     {
-        DateTime dateTime = (DateTime)value;
-        DateTime correctedDateTime = dateTime.withZoneRetainFields(DateTimeZone.UTC);
-        return correctedDateTime.toDate();
+        LocalDateTime dateTime = (LocalDateTime)value;
+        return Date.from(dateTime.toInstant(ZoneOffset.UTC));
     }
 
     /**
@@ -525,10 +529,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
      * to sql syntax, as it does when we pass an xml 'dateTime' object.  So, we'll just pass a string
      * ready for sql.
      */
-    private Object convertLocalDateToXmlDate(Object value)
+    String convertLocalDateToXmlDate(Object value)
     {
         LocalDate localDate = (LocalDate)value;
-        return "date '" + ISODateTimeFormat.yearMonthDay().print(localDate) + "'";
+        return "date '" + localDate + "'";
     }
 
     private Object getValue(Object reportParams, Field field) throws AssertionError

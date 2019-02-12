@@ -1,4 +1,4 @@
-    package org.ccci.obiee.client.rowmap;
+package org.ccci.obiee.client.rowmap;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -7,6 +7,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import io.opentracing.Tracer;
@@ -17,7 +18,6 @@ import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
 import org.hamcrest.TypeSafeDiagnosingMatcher;
 import org.hamcrest.core.CombinableMatcher;
-import org.joda.time.LocalDate;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
@@ -127,8 +127,8 @@ public class RowmapIntegrationTest
     public void testRetrieveWithDateParameter() throws Exception
     {
         SaiDonationParameters params = new SaiDonationParameters();
-        params.donationRangeBegin = new LocalDate(2011, 1, 1);
-        params.donationRangeEnd = new LocalDate(2011, 12, 31);
+        params.donationRangeBegin = LocalDate.of(2011, 1, 1);
+        params.donationRangeEnd = LocalDate.of(2011, 12, 31);
         
         Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
@@ -266,8 +266,8 @@ public class RowmapIntegrationTest
     {
         SaiDonationParameters params = new SaiDonationParameters();
         params.designationNumber = "0478406";
-        params.donationRangeBegin = new LocalDate(2011, 1, 1);
-        params.donationRangeEnd = new LocalDate(2010, 1, 1);
+        params.donationRangeBegin = LocalDate.of(2011, 1, 1);
+        params.donationRangeEnd = LocalDate.of(2010, 1, 1);
 
         Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
@@ -281,8 +281,8 @@ public class RowmapIntegrationTest
     {
         SaiDonationParameters params = new SaiDonationParameters();
         params.designationNumber = "0478406";
-        params.donationRangeBegin = new LocalDate(2011, 1, 1);
-        params.donationRangeEnd = new LocalDate(2010, 1, 1);
+        params.donationRangeBegin = LocalDate.of(2011, 1, 1);
+        params.donationRangeEnd = LocalDate.of(2010, 1, 1);
 
         Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);

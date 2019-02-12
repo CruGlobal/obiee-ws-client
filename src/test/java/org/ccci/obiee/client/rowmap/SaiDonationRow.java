@@ -1,12 +1,12 @@
 package org.ccci.obiee.client.rowmap;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import org.ccci.obiee.client.rowmap.annotation.Column;
 import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
 import org.ccci.obiee.client.rowmap.annotation.Scale;
-import org.joda.time.LocalDate;
 
 @ReportPath("/shared/CCCi/SSW/SAI Donations")
 public class SaiDonationRow

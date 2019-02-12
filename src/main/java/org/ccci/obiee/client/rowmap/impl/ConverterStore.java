@@ -72,84 +72,53 @@ public class ConverterStore
     public static ConverterStore buildDefault()
     {
         ConverterStore converterStore = new ConverterStore();
-        converterStore.addConverter(String.class, new Converter<String>()
-            {
-                public String convert(String xmlValue, Field field)
-                {
-                    return xmlValue;
-                }
-            });
+        converterStore.addConverter(String.class, (xmlValue, field) -> xmlValue);
         
-        Converter<Integer> integerConverter = new Converter<Integer>()
-        {
-            public Integer convert(String xmlValue, Field field)
-            {
-                if (empty(xmlValue)) return null;
-                return Integer.valueOf(xmlValue);
-            }
+        Converter<Integer> integerConverter = (xmlValue, field) -> {
+            if (empty(xmlValue)) return null;
+            return Integer.valueOf(xmlValue);
         };
         converterStore.addConverter(Integer.class, integerConverter);
         converterStore.addConverter(Integer.TYPE, integerConverter);
         
-        Converter<Long> longConverter = new Converter<Long>()
-        {
-            public Long convert(String xmlValue, Field field)
-            {
-                if (empty(xmlValue)) return null;
-                return Long.valueOf(xmlValue);
-            }
+        Converter<Long> longConverter = (xmlValue, field) -> {
+            if (empty(xmlValue)) return null;
+            return Long.valueOf(xmlValue);
         };
         converterStore.addConverter(Long.class, longConverter);
         converterStore.addConverter(Long.TYPE, longConverter);
         
-        Converter<Double> doubleConverter = new Converter<Double>()
-        {
-            public Double convert(String xmlValue, Field field)
-            {
-                if (empty(xmlValue)) return null;
-                return Double.valueOf(xmlValue);
-            }
+        Converter<Double> doubleConverter = (xmlValue, field) -> {
+            if (empty(xmlValue)) return null;
+            return Double.valueOf(xmlValue);
         };
         converterStore.addConverter(Double.class, doubleConverter);
         converterStore.addConverter(Double.TYPE, doubleConverter);
         
-        converterStore.addConverter(LocalDate.class, new Converter<LocalDate>()
-            {
-                public LocalDate convert(String xmlValue, Field field)
-                {
-                    if (empty(xmlValue)) return null;
-                    return LocalDate.parse(xmlValue, ISO_LOCAL_DATE_OPTIONAL_TIME);
-                }
-            });
+        converterStore.addConverter(LocalDate.class, (xmlValue, field) -> {
+            if (empty(xmlValue)) return null;
+            return LocalDate.parse(xmlValue, ISO_LOCAL_DATE_OPTIONAL_TIME);
+        });
         
-        converterStore.addConverter(LocalDateTime.class, new Converter<LocalDateTime>()
-            {
-                public LocalDateTime convert(String xmlValue, Field field)
-                {
-                    if (empty(xmlValue)) return null;
-                    return LocalDateTime.parse(xmlValue, ISO_LOCAL_DATE_TIME.withZone(ZoneOffset.UTC));
-                }
-            });
+        converterStore.addConverter(LocalDateTime.class, (xmlValue, field) -> {
+            if (empty(xmlValue)) return null;
+            return LocalDateTime.parse(xmlValue, ISO_LOCAL_DATE_TIME.withZone(ZoneOffset.UTC));
+        });
         
-        converterStore.addConverter(BigDecimal.class, new Converter<BigDecimal>()
+        converterStore.addConverter(BigDecimal.class, (xmlValue, field) -> {
+            if (empty(xmlValue)) return null;
+
+            BigDecimal parsed = new BigDecimal(xmlValue);
+
+            if (field.isAnnotationPresent(Scale.class))
             {
-                
-                public BigDecimal convert(String xmlValue, Field field)
-                {
-                    if (empty(xmlValue)) return null;
-                    
-                    BigDecimal parsed = new BigDecimal(xmlValue);
-                    
-                    if (field.isAnnotationPresent(Scale.class))
-                    {
-                        return parsed.setScale(field.getAnnotation(Scale.class).value());
-                    }
-                    else
-                    {
-                        return parsed;
-                    }
-                }
-            });
+                return parsed.setScale(field.getAnnotation(Scale.class).value());
+            }
+            else
+            {
+                return parsed;
+            }
+        });
 
         if (isJodaAvailable())
         {

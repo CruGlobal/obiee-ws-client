@@ -499,14 +499,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             @SuppressWarnings("unchecked") //this is actually checked in the if() statement directly above
             Set<String> set = (Set<String>) value;
-            Iterable<String> quotedStrings = Iterables.transform(set, new Function<String, String>()
-            {
-                @Override
-                public String apply(String input)
-                {
-                    return "'" + input + "'";
-                }
-            });
+            Iterable<String> quotedStrings = Iterables.transform(set, input -> "'" + input + "'");
             return Joiner.on(",").join(quotedStrings);
         }
         else

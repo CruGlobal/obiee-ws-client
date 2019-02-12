@@ -13,18 +13,18 @@ public class SaiDonationRow
 {
     public static ReportDefinition<SaiDonationRow> report = new ReportDefinition<SaiDonationRow>(SaiDonationRow.class);
 
-	public static class SaiDonationParameters
-	{
-		@ReportParamVariable
-		public String designationNumber;
-		@ReportParamVariable
-		public String accountNumber;
-		@ReportParamVariable
-		public LocalDate donationRangeBegin;
-		@ReportParamVariable
-		public LocalDate donationRangeEnd;
-	}
-	
+    public static class SaiDonationParameters
+    {
+        @ReportParamVariable
+        public String designationNumber;
+        @ReportParamVariable
+        public String accountNumber;
+        @ReportParamVariable
+        public LocalDate donationRangeBegin;
+        @ReportParamVariable
+        public LocalDate donationRangeEnd;
+    }
+
     @Column(tableHeading = "Designation")
     private String designationNumber;
     

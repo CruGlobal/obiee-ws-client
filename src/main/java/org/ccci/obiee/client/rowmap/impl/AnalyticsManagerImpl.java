@@ -220,28 +220,28 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             if (selection == null) 
                 throw new NullPointerException("selection is null");
             if(!annotatedFieldsExist(selection))
-            	throw new RowmapConfigurationException("You forgot to annotate the filter variables");
+                throw new RowmapConfigurationException("You forgot to annotate the filter variables");
             this.selection = selection;
             return this;
         }
         
         public Query<T> orderBy(ReportColumn<T> sortColumn, SortDirection direction) 
         {
-			if (sortColumn == null)
-				throw new NullPointerException("sortColumn cannot be null.");
-			if (!reportDefinition.getColumns().contains(sortColumn))
-			{
-			    throw new IllegalArgumentException(String.format(
-			        "Sort column %s does not appear to be a column of report %s", 
-			        sortColumn, 
-			        reportDefinition.getName()
-		        ));
-			}
-			this.direction = direction;
-			this.sortColumn = sortColumn;
-			
-			return this;
-		}
+            if (sortColumn == null)
+                throw new NullPointerException("sortColumn cannot be null.");
+            if (!reportDefinition.getColumns().contains(sortColumn))
+            {
+                throw new IllegalArgumentException(String.format(
+                    "Sort column %s does not appear to be a column of report %s",
+                    sortColumn,
+                    reportDefinition.getName()
+                ));
+            }
+            this.direction = direction;
+            this.sortColumn = sortColumn;
+
+            return this;
+        }
 
         @Override
         public Query<T> setMaxResults(int maxResults)
@@ -392,16 +392,16 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         
         private boolean annotatedFieldsExist(Object selection)
         {
-        	Class<?> clazz = selection.getClass();
+            Class<?> clazz = selection.getClass();
             
-        	for(Field field: clazz.getDeclaredFields())
-        	{
+            for(Field field: clazz.getDeclaredFields())
+            {
                 if(field.getAnnotation(ReportParamVariable.class) != null)
-        		{
-                	return true;
-        		}
-        	}
-        	return false;
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
     
@@ -431,16 +431,16 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             Class<?> clazz = selector.getClass();
             
-        	for(Field field: clazz.getDeclaredFields())
-        	{
-        		Object value = getValue(selector, field);
-        		ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
+            for(Field field: clazz.getDeclaredFields())
+            {
+                Object value = getValue(selector, field);
+                ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
                 if(reportParamVar != null && value != null)
-        		{
-        			Variable var = createVariable(field, value, reportParamVar);
-        			params.getVariables().add(var);
-        		}
-        	}
+                {
+                    Variable var = createVariable(field, value, reportParamVar);
+                    params.getVariables().add(var);
+                }
+            }
         }
         return params;
     }
@@ -451,11 +451,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         Variable var = new Variable();
         if(reportParamVar.name().equals(""))
         {
-        	var.setName(field.getName());
+            var.setName(field.getName());
         }
         else
         {
-        	var.setName(reportParamVar.name());
+            var.setName(reportParamVar.name());
         }
         var.setValue(getVariableValue(field, value, fieldType));
         return var;
@@ -470,11 +470,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         else if(fieldType.equals(LocalDate.class))
         {
-        	return convertLocalDateToXmlDate(value);
+            return convertLocalDateToXmlDate(value);
         }
         else if(fieldType.equals(DateTime.class))
         {
-        	return convertDateTimeToUTCDate(value);
+            return convertDateTimeToUTCDate(value);
         }
         else if(fieldType.equals(Set.class) && field.getGenericType() instanceof ParameterizedType)
         {
@@ -482,7 +482,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         else
         {
-        	throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
+            throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
         }
     }
 
@@ -506,7 +506,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         else
         {
-        	throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
+            throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
         }
     }
 
@@ -663,8 +663,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         ReportRef report = new ReportRef();
         report.setReportXml(xmlReport);
 
-    	try
-    	{
+        try
+        {
             return xmlViewService.executeXMLQuery(
                 report,
                 outputFormat,
@@ -682,11 +682,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                         SoapFaults.getDetailsAsString(e.getFault())), 
                     e);
         }
-    	catch (RuntimeException e)
+        catch (RuntimeException e)
         {
-    	    recentException = e;
-        	throw new DataRetrievalException(
-        			String.format("unable to query with xml:\n" +
+            recentException = e;
+            throw new DataRetrievalException(
+                    String.format("unable to query with xml:\n" +
                                   "%s", xmlReport), e);
         }
     }
@@ -741,7 +741,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         QueryResults queryResults;
         try
         {
-    		queryResults = xmlViewService.executeXMLQuery(
+            queryResults = xmlViewService.executeXMLQuery(
                 report, 
                 outputFormat, 
                 executionOptions, 
@@ -773,14 +773,14 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     }
 
     /**
-	 * modifies the xml definition of the query to order the results by the desired column
-	 */
-	String prepareXml(String xml, String sortColumnId, SortDirection sortDirection)
-	{
+     * modifies the xml definition of the query to order the results by the desired column
+     */
+    String prepareXml(String xml, String sortColumnId, SortDirection sortDirection)
+    {
         Document reportDoc = buildXmlReportDocument(xml);
         replaceColumnOrderChildren(sortColumnId, sortDirection, reportDoc);
         return writeDocument(reportDoc);
-	}
+    }
 
     void replaceColumnOrderChildren(String sortColumnId, SortDirection sortDirection, Document reportDoc) {
         NodeList list = searchForColumnOrder(reportDoc);
@@ -857,7 +857,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return writer.toString();
     }
 
-	private String formatParamsAsString(ReportParams params)
+    private String formatParamsAsString(ReportParams params)
     {
         return String.format("[variables=%s]", asMap(params.getVariables()));
     }
@@ -1064,7 +1064,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         overrideResourceName(span, VALIDATION_REPORT_PATH);
         try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
-        	xmlViewService.executeXMLQuery(
+            xmlViewService.executeXMLQuery(
                 report, 
                 outputFormat, 
                 executionOptions, 

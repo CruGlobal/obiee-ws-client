@@ -7,7 +7,7 @@ package org.ccci.obiee.client.rowmap;
  */
 public enum SortDirection 
 {
-	ASCENDING("asc"), 
+    ASCENDING("asc"),
     DESCENDING("desc");
 
     String code;

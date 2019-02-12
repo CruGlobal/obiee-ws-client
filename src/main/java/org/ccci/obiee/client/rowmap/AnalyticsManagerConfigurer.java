@@ -10,43 +10,43 @@ import org.ccci.obiee.client.rowmap.impl.AnalyticsManagerFactoryImpl;
 import org.ccci.obiee.client.rowmap.impl.RowmapConfiguration;
 
 public class AnalyticsManagerConfigurer {
-	
-	private final AnalyticsManagerFactory factory;
+
+    private final AnalyticsManagerFactory factory;
     private final Tracer tracer;
 
     public AnalyticsManagerConfigurer(Tracer tracer)
     {
         this.tracer = tracer;
         Properties obieeProperties;
-    	try
-    	{
-    		obieeProperties = loadObieeProperties();
-    	}
-    	catch (IOException e)
-    	{
-    		throw new RuntimeException("unable to load obiee.properties file", e);
-    	}
-    	RowmapConfiguration config = buildRowmapConfiguration(obieeProperties);
-    	
-    	AnswersServiceFactory serviceFactory = new AnswersServiceFactory();
-    	
+        try
+        {
+            obieeProperties = loadObieeProperties();
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("unable to load obiee.properties file", e);
+        }
+        RowmapConfiguration config = buildRowmapConfiguration(obieeProperties);
+
+        AnswersServiceFactory serviceFactory = new AnswersServiceFactory();
+
         factory = new AnalyticsManagerFactoryImpl(
             serviceFactory,
-			config,
+            config,
             this.tracer);
     }
 
     private RowmapConfiguration buildRowmapConfiguration(Properties obieeProperties)
     {
         String username = getRequiredProperty(obieeProperties, "obiee.username");
-    	String password = getRequiredProperty(obieeProperties, "obiee.password");
-    	String endpointBaseUrl= getRequiredProperty(obieeProperties, "obiee.endpoint.baseUrl");
+        String password = getRequiredProperty(obieeProperties, "obiee.password");
+        String endpointBaseUrl= getRequiredProperty(obieeProperties, "obiee.endpoint.baseUrl");
 
-    	RowmapConfiguration config = new RowmapConfiguration();
-    	config.setUsername(username);
-    	config.setPassword(password);
-    	config.setEndpointBaseUrl(endpointBaseUrl);
-    	config.setReadTimeout(asInteger(obieeProperties.getProperty("obiee.readTimeout")));
+        RowmapConfiguration config = new RowmapConfiguration();
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setEndpointBaseUrl(endpointBaseUrl);
+        config.setReadTimeout(asInteger(obieeProperties.getProperty("obiee.readTimeout")));
         return config;
     }
     
@@ -88,7 +88,7 @@ public class AnalyticsManagerConfigurer {
         }
     }
 
-	public AnalyticsManagerFactory getAMFactory() {
-		return factory;
-	}
+    public AnalyticsManagerFactory getAMFactory() {
+        return factory;
+    }
 }

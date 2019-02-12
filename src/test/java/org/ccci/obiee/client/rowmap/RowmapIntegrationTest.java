@@ -64,7 +64,7 @@ public class RowmapIntegrationTest
     @Test
     public void testRetrieveWithDesignationParameter() throws Exception
     {
-    	SaiDonationParameters params = new SaiDonationParameters();
+        SaiDonationParameters params = new SaiDonationParameters();
         params.designationNumber = "0478406";
         
         Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
@@ -97,10 +97,10 @@ public class RowmapIntegrationTest
     @Test
     public void testRetrieveWithAccountNumberParameter() throws Exception
     {
-    	SaiDonationParameters params = new SaiDonationParameters();
-    	params.accountNumber = "000376764";
+        SaiDonationParameters params = new SaiDonationParameters();
+        params.accountNumber = "000376764";
         
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
 
@@ -111,11 +111,11 @@ public class RowmapIntegrationTest
     @Test
     public void testRetrieveWithAccountNumberAndDesignationParameters() throws Exception
     {
-    	SaiDonationParameters params = new SaiDonationParameters();
-    	params.accountNumber = "000442787";
-    	params.designationNumber = "0378570";
+        SaiDonationParameters params = new SaiDonationParameters();
+        params.accountNumber = "000442787";
+        params.designationNumber = "0378570";
         
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
         
@@ -126,11 +126,11 @@ public class RowmapIntegrationTest
     @Test(enabled = true)
     public void testRetrieveWithDateParameter() throws Exception
     {
-    	SaiDonationParameters params = new SaiDonationParameters();
-    	params.donationRangeBegin = new LocalDate(2011, 1, 1);
-    	params.donationRangeEnd = new LocalDate(2011, 12, 31);
+        SaiDonationParameters params = new SaiDonationParameters();
+        params.donationRangeBegin = new LocalDate(2011, 1, 1);
+        params.donationRangeEnd = new LocalDate(2011, 12, 31);
         
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
         List<SaiDonationRow> rows = query.getResultList();
 
@@ -151,10 +151,10 @@ public class RowmapIntegrationTest
     @Test(enabled = false)
     public void testSortByAmount() throws Exception
     {
-    	SortDirection direction = SortDirection.ASCENDING;
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
-    	query.orderBy(SaiDonationRow.report.getColumn("amount"), direction);
-    	List<SaiDonationRow> rows = query.getResultList();
+        SortDirection direction = SortDirection.ASCENDING;
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        query.orderBy(SaiDonationRow.report.getColumn("amount"), direction);
+        List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
         printRowsize(rows);
@@ -163,10 +163,10 @@ public class RowmapIntegrationTest
     @Test(enabled = false)
     public void testSortByAmountDesc() throws Exception
     {
-    	SortDirection direction = SortDirection.DESCENDING;
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
-    	query.orderBy(SaiDonationRow.report.getColumn("amount"), direction);
-    	List<SaiDonationRow> rows = query.getResultList();
+        SortDirection direction = SortDirection.DESCENDING;
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        query.orderBy(SaiDonationRow.report.getColumn("amount"), direction);
+        List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
         printRowsize(rows);
@@ -175,10 +175,10 @@ public class RowmapIntegrationTest
     @Test
     public void testSortByDate() throws Exception
     {
-    	SortDirection direction = SortDirection.ASCENDING;
-    	Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
-    	query.orderBy(SaiDonationRow.report.getColumn("transactionDate"), direction);
-    	List<SaiDonationRow> rows = query.getResultList();
+        SortDirection direction = SortDirection.ASCENDING;
+        Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
+        query.orderBy(SaiDonationRow.report.getColumn("transactionDate"), direction);
+        List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
         SaiDonationRow previous = null;
@@ -239,14 +239,14 @@ public class RowmapIntegrationTest
     @Test(enabled = true)
     public void testSortByAmountWithDesigParam() throws Exception
     {
-    	SortDirection direction = SortDirection.ASCENDING;
-    	SaiDonationParameters params = new SaiDonationParameters();
+        SortDirection direction = SortDirection.ASCENDING;
+        SaiDonationParameters params = new SaiDonationParameters();
         params.designationNumber = "0478406";
         
         Query<SaiDonationRow> query = manager.createQuery(SaiDonationRow.report);
         query.withSelection(params);
         query.orderBy(SaiDonationRow.report.getColumn("transactionAmount"), direction);
-    	List<SaiDonationRow> rows = query.getResultList();
+        List<SaiDonationRow> rows = query.getResultList();
 
         assertThat(rows.size(), greaterThan(0));
         SaiDonationRow previous = null;

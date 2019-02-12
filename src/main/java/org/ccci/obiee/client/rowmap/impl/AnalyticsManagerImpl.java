@@ -928,12 +928,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                     e.getColumnNumber()),
                 e);
         }
-        catch (SAXException e)
-        {
-            recentException = e;
-            throw new DataRetrievalException(parseErrorMessage, e);
-        }
-        catch (IOException e)
+        catch (SAXException | IOException e)
         {
             recentException = e;
             throw new DataRetrievalException(parseErrorMessage, e);

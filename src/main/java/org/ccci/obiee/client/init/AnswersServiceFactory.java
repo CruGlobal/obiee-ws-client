@@ -35,12 +35,7 @@ public class AnswersServiceFactory
         {
             return constructor.newInstance(wsdlLocation, serviceName);
         }
-        catch (InstantiationException e)
-        {
-            Throwables.throwIfUnchecked(e);
-            throw new RuntimeException(e);
-        }
-        catch (IllegalAccessException e)
+        catch (InstantiationException | IllegalAccessException e)
         {
             Throwables.propagateIfPossible(e);
             throw new RuntimeException(e);

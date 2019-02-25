@@ -1,30 +1,30 @@
 package org.ccci.obiee.client.rowmap;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import org.ccci.obiee.client.rowmap.annotation.Column;
 import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
 import org.ccci.obiee.client.rowmap.annotation.Scale;
-import org.joda.time.LocalDate;
 
 @ReportPath("/shared/CCCi/SSW/SAI Donations")
 public class SaiDonationRow
 {
-    public static ReportDefinition<SaiDonationRow> report = new ReportDefinition<SaiDonationRow>(SaiDonationRow.class);
+    public static ReportDefinition<SaiDonationRow> report = new ReportDefinition<>(SaiDonationRow.class);
 
-	public static class SaiDonationParameters
-	{
-		@ReportParamVariable
-		public String designationNumber;
-		@ReportParamVariable
-		public String accountNumber;
-		@ReportParamVariable
-		public LocalDate donationRangeBegin;
-		@ReportParamVariable
-		public LocalDate donationRangeEnd;
-	}
-	
+    public static class SaiDonationParameters
+    {
+        @ReportParamVariable
+        public String designationNumber;
+        @ReportParamVariable
+        public String accountNumber;
+        @ReportParamVariable
+        public LocalDate donationRangeBegin;
+        @ReportParamVariable
+        public LocalDate donationRangeEnd;
+    }
+
     @Column(tableHeading = "Designation")
     private String designationNumber;
     

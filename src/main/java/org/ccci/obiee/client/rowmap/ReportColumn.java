@@ -51,9 +51,7 @@ public class ReportColumn<T>
         }
         catch (IllegalAccessException e)
         {
-            AssertionError assertionError = new AssertionError("field should be accessible");
-            assertionError.initCause(e);
-            throw assertionError;
+            throw new AssertionError("field should be accessible", e);
         }
     }
     

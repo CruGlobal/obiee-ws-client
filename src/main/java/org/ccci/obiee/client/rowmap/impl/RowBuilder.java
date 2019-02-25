@@ -18,7 +18,7 @@ class RowBuilder<T>
 {
     final Map<ReportColumnId, String> columnToNodeNameMapping;
     
-    final Map<ReportColumnId, Field> columnToFieldMapping = new HashMap<ReportColumnId, Field>();
+    final Map<ReportColumnId, Field> columnToFieldMapping = new HashMap<>();
     private final ConverterStore converterStore;
     private final Constructor<T> rowConstructor;
     

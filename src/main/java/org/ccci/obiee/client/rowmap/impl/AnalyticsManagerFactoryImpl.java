@@ -1,5 +1,8 @@
 package org.ccci.obiee.client.rowmap.impl;
 
+import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,6 +24,8 @@ import oracle.bi.web.soap.XmlViewServiceSoap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.ccci.obiee.client.rowmap.impl.Tracing.buildTopLevelSpan;
+
 public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
 {
 
@@ -41,19 +46,30 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
     
     private String endpointBaseUrl;
     private Logger log = LoggerFactory.getLogger(getClass());
-    
-    public AnalyticsManagerFactoryImpl(SAWSessionService sawSessionService, XmlViewService xmlViewService, ReportEditingService reportEditingService, String username, String password)
+    private Tracer tracer;
+
+    public AnalyticsManagerFactoryImpl(
+        SAWSessionService sawSessionService,
+        XmlViewService xmlViewService,
+        ReportEditingService reportEditingService,
+        String username,
+        String password,
+        Tracer tracer)
     {
         this.sawSessionService = sawSessionService;
         this.xmlViewService = xmlViewService;
         this.reportEditingService = reportEditingService;
         this.username = username;
         this.password = password;
+        this.tracer = tracer;
         this.readTimeout = DEFAULT_CONNECT_TIMEOUT;
         this.connectTimeout = DEFAULT_CONNECT_TIMEOUT;
     }
     
-    public AnalyticsManagerFactoryImpl(AnswersServiceFactory serviceFactory, RowmapConfiguration config)
+    public AnalyticsManagerFactoryImpl(
+        AnswersServiceFactory serviceFactory,
+        RowmapConfiguration config,
+        Tracer tracer)
     {
         this.sawSessionService = serviceFactory.buildService(SAWSessionService.class);
         this.xmlViewService = serviceFactory.buildService(XmlViewService.class);
@@ -63,37 +79,49 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
         this.endpointBaseUrl = config.getEndpointBaseUrl();
         this.readTimeout = config.getReadTimeout() == null ? DEFAULT_READ_TIMEOUT : config.getReadTimeout();
         this.connectTimeout = config.getConnectTimeout() == null ? DEFAULT_CONNECT_TIMEOUT : config.getConnectTimeout();
+        this.tracer = tracer;
     }
 
     public AnalyticsManager createAnalyticsManager()
     {
-        SAWSessionServiceSoap sawSessionServiceSoap = sawSessionService.getSAWSessionServiceSoap();
-        configurePort(sawSessionServiceSoap);
-        
-        XmlViewServiceSoap xmlViewServiceSoap = xmlViewService.getXmlViewServiceSoap();
-        configurePort(xmlViewServiceSoap);
-        
-        ReportEditingServiceSoap reportEditingServiceSoap = reportEditingService.getReportEditingServiceSoap();
-        configurePort(reportEditingServiceSoap);
-        
-        String sessionId;
-        try
-        {
-            sessionId = sawSessionServiceSoap.logon(username, password);
+        final Span span = buildTopLevelSpan(tracer, "create-analytics-manager");
+        try (Scope ignored = tracer.scopeManager().activate(span, false)) {
+            SAWSessionServiceSoap sawSessionServiceSoap = sawSessionService.getSAWSessionServiceSoap();
+            configurePort(sawSessionServiceSoap);
+
+            XmlViewServiceSoap xmlViewServiceSoap = xmlViewService.getXmlViewServiceSoap();
+            configurePort(xmlViewServiceSoap);
+
+            ReportEditingServiceSoap reportEditingServiceSoap = reportEditingService.getReportEditingServiceSoap();
+            configurePort(reportEditingServiceSoap);
+
+            String sessionId = logon(sawSessionServiceSoap);
+
+            ConverterStore converterStore = ConverterStore.buildDefault();
+            return new AnalyticsManagerImpl(
+                sessionId,
+                sawSessionServiceSoap,
+                xmlViewServiceSoap,
+                reportEditingServiceSoap,
+                converterStore,
+                tracer
+            );
+        } finally {
+            span.finish();
         }
-        catch (SOAPFaultException e)
-        {
+    }
+
+    private String logon(SAWSessionServiceSoap sawSessionServiceSoap) {
+        final Span span = tracer.buildSpan("logon").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false)) {
+            String sessionId = sawSessionServiceSoap.logon(username, password);
+            log.debug("created Answers session " + sessionId);
+            return sessionId;
+        } catch (SOAPFaultException e) {
             throw new AnswersConnectionException(username, e);
+        } finally {
+            span.finish();
         }
-        log.debug("created Answers session " + sessionId);
-        
-        ConverterStore converterStore = ConverterStore.buildDefault();
-        return new AnalyticsManagerImpl(
-            sessionId,
-            sawSessionServiceSoap, 
-            xmlViewServiceSoap, 
-            reportEditingServiceSoap, 
-            converterStore);
     }
 
     private void configurePort(Object port)

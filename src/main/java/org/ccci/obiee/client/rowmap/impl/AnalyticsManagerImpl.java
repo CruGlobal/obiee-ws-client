@@ -1,9 +1,9 @@
 package org.ccci.obiee.client.rowmap.impl;
 
-import com.google.common.base.Function;
-import com.google.common.base.Joiner;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
 import oracle.bi.web.soap.QueryResults;
 import oracle.bi.web.soap.ReportEditingServiceSoap;
 import oracle.bi.web.soap.ReportParams;
@@ -24,10 +24,6 @@ import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
 import org.ccci.obiee.client.rowmap.util.Doms;
 import org.ccci.obiee.client.rowmap.util.SoapFaults;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.LocalDate;
-import org.joda.time.format.ISODateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Attr;
@@ -63,13 +59,21 @@ import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import static org.ccci.obiee.client.rowmap.impl.JodaTimeAvailability.isJodaAvailable;
+import static org.ccci.obiee.client.rowmap.impl.Tracing.buildTopLevelSpan;
 
 /**
  * 
@@ -104,11 +108,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     private final DocumentBuilder builder;
     private final ConverterStore converterStore;
+    private final Tracer tracer;
 
     private final ReportEditingServiceSoap reportEditingService;
-    private OperationTimer operationTimer = new NoOpOperationTimer();
     private boolean closed = false;
-
 
     private Exception recentException = null;
     private Logger log = LoggerFactory.getLogger(getClass());
@@ -119,22 +122,27 @@ public class AnalyticsManagerImpl implements AnalyticsManager
      * @param sawSessionService used for logout
      * @param xmlViewService used for retrieving report queries
      * @param converterStore used to convert field values
+     * @param tracer used for APM
      */
-    public AnalyticsManagerImpl(String sessionId, 
-                                SAWSessionServiceSoap sawSessionService,
-                                XmlViewServiceSoap xmlViewService,
-                                ReportEditingServiceSoap reportEditingService,
-                                ConverterStore converterStore)
+    public AnalyticsManagerImpl(
+        String sessionId,
+        SAWSessionServiceSoap sawSessionService,
+        XmlViewServiceSoap xmlViewService,
+        ReportEditingServiceSoap reportEditingService,
+        ConverterStore converterStore,
+        Tracer tracer)
     {
+
         this.sessionId = sessionId;
         this.sawSessionService = sawSessionService;
         this.xmlViewService = xmlViewService;
         this.reportEditingService = reportEditingService;
         this.converterStore = converterStore;
+        this.tracer = tracer;
 
         xpathFactory = XPathFactory.newInstance();
         buildXpathExpressions();
-        
+
         DocumentBuilderFactory factory;
         factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);
@@ -169,9 +177,17 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     {
         checkOpen();
         closed = true;
-        log.debug("logging off session " + sessionId);
-        sawSessionService.logoff(sessionId);
-        log.debug("logoff successful");
+        final Span span = buildTopLevelSpan(tracer, "logoff");
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            log.debug("logging off session " + sessionId);
+            sawSessionService.logoff(sessionId);
+            log.debug("logoff successful");
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private void checkOpen()
@@ -184,7 +200,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         checkOpen();
         if (reportDefinition == null)
             throw new NullPointerException("reportDefinition is null");
-        return new QueryImpl<T>(reportDefinition);
+        return new QueryImpl<>(reportDefinition);
     }
     
     class QueryImpl<T> implements Query<T>
@@ -206,28 +222,28 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             if (selection == null) 
                 throw new NullPointerException("selection is null");
             if(!annotatedFieldsExist(selection))
-            	throw new RowmapConfigurationException("You forgot to annotate the filter variables");
+                throw new RowmapConfigurationException("You forgot to annotate the filter variables");
             this.selection = selection;
             return this;
         }
         
         public Query<T> orderBy(ReportColumn<T> sortColumn, SortDirection direction) 
         {
-			if (sortColumn == null)
-				throw new NullPointerException("sortColumn cannot be null.");
-			if (!reportDefinition.getColumns().contains(sortColumn))
-			{
-			    throw new IllegalArgumentException(String.format(
-			        "Sort column %s does not appear to be a column of report %s", 
-			        sortColumn, 
-			        reportDefinition.getName()
-		        ));
-			}
-			this.direction = direction;
-			this.sortColumn = sortColumn;
-			
-			return this;
-		}
+            if (sortColumn == null)
+                throw new NullPointerException("sortColumn cannot be null.");
+            if (!reportDefinition.getColumns().contains(sortColumn))
+            {
+                throw new IllegalArgumentException(String.format(
+                    "Sort column %s does not appear to be a column of report %s",
+                    sortColumn,
+                    reportDefinition.getName()
+                ));
+            }
+            this.direction = direction;
+            this.sortColumn = sortColumn;
+
+            return this;
+        }
 
         @Override
         public Query<T> setMaxResults(int maxResults)
@@ -238,38 +254,54 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
         public List<T> getResultList()
         {
-            checkOpen();
-            Class<T> rowType = reportDefinition.getRowType();
-            ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
-
-            Document dataDocument;
-            Document metadataDocument;
-            ReportParams params = buildReportParams(selection);
-            if(sortColumn != null)
+            final Span span = buildTopLevelSpan(tracer, "get-result-list");
+            try (Scope ignored = tracer.scopeManager().activate(span, false))
             {
-                if(direction == null)
+                checkOpen();
+                Class<T> rowType = reportDefinition.getRowType();
+                ReportPath reportPathConfiguration = rowType.getAnnotation(ReportPath.class);
+                overrideResourceName(span, reportPathConfiguration.value());
+
+                Document dataDocument;
+                Document metadataDocument;
+                ReportParams params = buildReportParams(selection);
+                if (sortColumn != null)
                 {
-                    direction = SortDirection.ASCENDING;
+                    if (direction == null)
+                    {
+                        direction = SortDirection.ASCENDING;
+                    }
+
+                    String metadata = queryForMetadata(reportPathConfiguration);
+                    metadataDocument = buildRowsetDocument(metadata);
+
+                    String rowset = buildXmlReportAndQuery(
+                        reportPathConfiguration,
+                        params,
+                        metadataDocument,
+                        maxResults
+                    );
+                    dataDocument = buildRowsetDocument(rowset);
                 }
-                
-                String metadata = queryForMetadata(reportPathConfiguration);
-                metadataDocument = buildRowsetDocument(metadata);
+                else
+                {
+                    String rowset = queryForMetadataAndData(reportPathConfiguration, params, maxResults);
+                    dataDocument = buildRowsetDocument(rowset);
+                    metadataDocument = dataDocument;
+                }
 
-                String rowset = buildXmlReportAndQuery(reportPathConfiguration, params, metadataDocument, maxResults);
-                dataDocument = buildRowsetDocument(rowset);
+                if (isEmptyRowset(dataDocument))
+                {
+                    return Lists.newArrayList();
+                }
+                RowBuilder<T> rowBuilder = buildRowBuilder(metadataDocument);
+                NodeList rows = getRows(dataDocument);
+                return buildResults(rowBuilder, rows);
             }
-            else
+            finally
             {
-                String rowset = queryForMetadataAndData(reportPathConfiguration, params, maxResults);
-                dataDocument = buildRowsetDocument(rowset);
-                metadataDocument = dataDocument;
+                span.finish();
             }
-
-            if (isEmptyRowset(dataDocument))
-                return Lists.newArrayList();
-            RowBuilder<T> rowBuilder = buildRowBuilder(metadataDocument);
-            NodeList rows = getRows(dataDocument);
-            return buildResults(rowBuilder, rows);
         }
 
         private String buildXmlReportAndQuery(
@@ -306,22 +338,29 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
         private List<T> buildResults(RowBuilder<T> rowBuilder, NodeList rows)
         {
-            operationTimer.start();
-            List<T> results = new ArrayList<T>();
-            for (Node row : Doms.each(rows))
+            final Span span = tracer.buildSpan("build-results").start();
+            try (Scope ignored = tracer.scopeManager().activate(span, false))
             {
-                T rowInstance = rowBuilder.buildRowInstance(row);
-                results.add(rowInstance);
+                List<T> results = new ArrayList<>();
+                for (Node row : Doms.each(rows))
+                {
+                    T rowInstance = rowBuilder.buildRowInstance(row);
+                    results.add(rowInstance);
+                }
+                return results;
             }
-            operationTimer.stopAndLog("result list built");
-            return results;
+            finally
+            {
+                span.finish();
+            }
+
         }
-        
+
         RowBuilder<T> buildRowBuilder(Document doc)
         {
             NodeList columnDefinitionXsdElements = getColumnSchemaNodesFromPreamble(doc);
             
-            Map<ReportColumnId, String> elementNamesPerColumnId = new HashMap<ReportColumnId, String>();
+            Map<ReportColumnId, String> elementNamesPerColumnId = new HashMap<>();
             
             for (Node node : Doms.each(columnDefinitionXsdElements) )
             {
@@ -336,7 +375,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             ConverterStore converters = reportDefinition.getConverterStore();
             ConverterStore reportConverterStore = converterStore.copyAndAdd(converters);
             
-            return new RowBuilder<T>(elementNamesPerColumnId, reportDefinition.getRowType(), reportConverterStore);
+            return new RowBuilder<>(elementNamesPerColumnId, reportDefinition.getRowType(), reportConverterStore);
         }
         
         
@@ -355,16 +394,16 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         
         private boolean annotatedFieldsExist(Object selection)
         {
-        	Class<?> clazz = selection.getClass();
+            Class<?> clazz = selection.getClass();
             
-        	for(Field field: clazz.getDeclaredFields())
-        	{
+            for(Field field: clazz.getDeclaredFields())
+            {
                 if(field.getAnnotation(ReportParamVariable.class) != null)
-        		{
-                	return true;
-        		}
-        	}
-        	return false;
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
     
@@ -394,16 +433,16 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             Class<?> clazz = selector.getClass();
             
-        	for(Field field: clazz.getDeclaredFields())
-        	{
-        		Object value = getValue(selector, field);
-        		ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
+            for(Field field: clazz.getDeclaredFields())
+            {
+                Object value = getValue(selector, field);
+                ReportParamVariable reportParamVar = field.getAnnotation(ReportParamVariable.class);
                 if(reportParamVar != null && value != null)
-        		{
-        			Variable var = createVariable(field, value, reportParamVar);
-        			params.getVariables().add(var);
-        		}
-        	}
+                {
+                    Variable var = createVariable(field, value, reportParamVar);
+                    params.getVariables().add(var);
+                }
+            }
         }
         return params;
     }
@@ -414,11 +453,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         Variable var = new Variable();
         if(reportParamVar.name().equals(""))
         {
-        	var.setName(field.getName());
+            var.setName(field.getName());
         }
         else
         {
-        	var.setName(reportParamVar.name());
+            var.setName(reportParamVar.name());
         }
         var.setValue(getVariableValue(field, value, fieldType));
         return var;
@@ -433,19 +472,23 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         else if(fieldType.equals(LocalDate.class))
         {
-        	return convertLocalDateToXmlDate(value);
+            return convertLocalDateToXmlDate(value);
         }
-        else if(fieldType.equals(DateTime.class))
+        else if(fieldType.equals(LocalDateTime.class))
         {
-        	return convertDateTimeToUTCDate(value);
+            return convertDateTimeToUTCDate(value);
         }
         else if(fieldType.equals(Set.class) && field.getGenericType() instanceof ParameterizedType)
         {
             return convertSetToInClauseList(field, value);
         }
+        else if(isJodaAvailable() && JodaConverters.isJodaField(fieldType))
+        {
+            return JodaConverters.convertJodaValueToReportVariableValue(value);
+        }
         else
         {
-        	throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
+            throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
         }
     }
 
@@ -457,30 +500,23 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             @SuppressWarnings("unchecked") //this is actually checked in the if() statement directly above
             Set<String> set = (Set<String>) value;
-            Iterable<String> quotedStrings = Iterables.transform(set, new Function<String, String>()
-            {
-                @Override
-                public String apply(String input)
-                {
-                    return "'" + input + "'";
-                }
-            });
-            return Joiner.on(",").join(quotedStrings);
+            return set.stream()
+                .map(input -> "'" + input + "'")
+                .collect(Collectors.joining(","));
         }
         else
         {
-        	throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
+            throw new RowmapConfigurationException("Unexpected data type passed in - field: " + field);
         }
     }
 
     /**
      * It's important to send dates oriented to UTC, since the dates are stored in the data warehouse as UTC.
      */
-    private Object convertDateTimeToUTCDate(Object value)
+    Date convertDateTimeToUTCDate(Object value)
     {
-        DateTime dateTime = (DateTime)value;
-        DateTime correctedDateTime = dateTime.withZoneRetainFields(DateTimeZone.UTC);
-        return correctedDateTime.toDate();
+        LocalDateTime dateTime = (LocalDateTime)value;
+        return Date.from(dateTime.toInstant(ZoneOffset.UTC));
     }
 
     /**
@@ -488,10 +524,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
      * to sql syntax, as it does when we pass an xml 'dateTime' object.  So, we'll just pass a string
      * ready for sql.
      */
-    private Object convertLocalDateToXmlDate(Object value)
+    String convertLocalDateToXmlDate(Object value)
     {
         LocalDate localDate = (LocalDate)value;
-        return "date '" + ISODateTimeFormat.yearMonthDay().print(localDate) + "'";
+        return "date '" + localDate + "'";
     }
 
     private Object getValue(Object reportParams, Field field) throws AssertionError
@@ -504,9 +540,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch(IllegalAccessException e)
         {
-            AssertionError assertionError = new AssertionError("We called field.setAccessible(true)");
-            assertionError.initCause(e);
-            throw assertionError;
+            throw new AssertionError("We called field.setAccessible(true)", e);
         }
         return value;
     }
@@ -517,74 +551,95 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         String sortColumnId,
         SortDirection direction)
     {
-        operationTimer.start();
-    	ReportRef report = new ReportRef();
-        report.setReportPath(reportPathConfiguration.value());
-        
-        String xml;
-        try
+        String xml = buildXmlFromParams(reportPathConfiguration, params);
+        return prepareXml(xml, sortColumnId, direction);
+    }
+
+    private String buildXmlFromParams(ReportPath reportPathConfiguration, ReportParams params)
+    {
+        final Span span = tracer.buildSpan("apply-report-params").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
-            xml = (String) reportEditingService.applyReportParams(report, params, true, sessionId);
-        }
-        catch (SOAPFaultException e)
-        {
-            recentException = e;
-            throw new DataRetrievalException(
+            ReportRef report = new ReportRef();
+            report.setReportPath(reportPathConfiguration.value());
+
+            try
+            {
+                return (String) reportEditingService.applyReportParams(report, params, true, sessionId);
+            }
+            catch (SOAPFaultException e)
+            {
+                recentException = e;
+                throw new DataRetrievalException(
                     String.format(
                         "unable to generate xml for report %s with %s; details follow:\n%s",
                         reportPathConfiguration.value(),
                         formatParamsAsString(params),
-                        SoapFaults.getDetailsAsString(e.getFault())), 
-                    e);
+                        SoapFaults.getDetailsAsString(e.getFault())
+                    ),
+                    e
+                );
+            }
         }
-
-        operationTimer.stopAndLog("queried for xml");
-        return prepareXml(xml, sortColumnId, direction);
+        finally
+        {
+            span.finish();
+        }
     }
-    
+
     private String queryForMetadata(ReportPath reportPathConfiguration)
     {
-        operationTimer.start();
-        
-    	XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA;
-        XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
-        executionOptions.setMaxRowsPerPage(-1);
-        executionOptions.setPresentationInfo(true);
-        
-        ReportRef report = new ReportRef();
-        report.setReportPath(reportPathConfiguration.value());
+        final Span span = tracer.buildSpan("query-for-metadata").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA;
+            XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
+            executionOptions.setMaxRowsPerPage(-1);
+            executionOptions.setPresentationInfo(true);
 
-        QueryResults results = queryXmlViewServiceAndHandleExceptions(
-           reportPathConfiguration,
-           new ReportParams(),
-           report,
-           outputFormat,
-           executionOptions);
-        operationTimer.stopAndLog("queried for metadata");
+            ReportRef report = new ReportRef();
+            report.setReportPath(reportPathConfiguration.value());
 
-    	return results.getRowset();
+            QueryResults results = queryXmlViewServiceAndHandleExceptions(
+                reportPathConfiguration,
+                new ReportParams(),
+                report,
+                outputFormat,
+                executionOptions
+            );
+            return results.getRowset();
+        }
+        finally
+        {
+            span.finish();
+        }
     }
-    
+
     private String queryForData(String xmlReport, ReportParams reportParams, int maxResults)
     {
-        operationTimer.start();
-        
-        XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
-
-        QueryResults results = queryXmlViewServiceWithXmlAndHandleExceptions(
-            xmlReport,
-            outputFormat,
-            reportParams,
-            maxResults);
-
-        if (!results.isFinished())
+        final Span span = tracer.buildSpan("query-for-data").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
-            String queryId = results.getQueryID();
-            xmlViewService.cancelQuery(queryId, sessionId);
-        }
+            XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_DATA;
 
-    	operationTimer.stopAndLog("queried for data");
-        return results.getRowset();
+            QueryResults results = queryXmlViewServiceWithXmlAndHandleExceptions(
+                xmlReport,
+                outputFormat,
+                reportParams,
+                maxResults
+            );
+
+            if (!results.isFinished())
+            {
+                String queryId = results.getQueryID();
+                xmlViewService.cancelQuery(queryId, sessionId);
+            }
+            return results.getRowset();
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private QueryResults queryXmlViewServiceWithXmlAndHandleExceptions(
@@ -605,8 +660,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         ReportRef report = new ReportRef();
         report.setReportXml(xmlReport);
 
-    	try
-    	{
+        try
+        {
             return xmlViewService.executeXMLQuery(
                 report,
                 outputFormat,
@@ -624,48 +679,54 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                         SoapFaults.getDetailsAsString(e.getFault())), 
                     e);
         }
-    	catch (RuntimeException e)
+        catch (RuntimeException e)
         {
-    	    recentException = e;
-        	throw new DataRetrievalException(
-        			String.format("unable to query with xml:\n" +
+            recentException = e;
+            throw new DataRetrievalException(
+                    String.format("unable to query with xml:\n" +
                                   "%s", xmlReport), e);
         }
     }
-    
+
     private String queryForMetadataAndData(
         ReportPath reportPathConfiguration,
         ReportParams reportParams,
         int maxRowsPerPage)
     {
-        operationTimer.start();
-        ReportRef report = new ReportRef();
-        report.setReportPath(reportPathConfiguration.value());
-        
-        XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA_AND_DATA;
-        XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
-        executionOptions.setMaxRowsPerPage(maxRowsPerPage);
-
-        // note: the docs I've found don't explain this setting, but it seems
-        // that maxRowsPerPage is ignored when it is false.
-        executionOptions.setAsync(maxRowsPerPage != -1);
-
-        executionOptions.setPresentationInfo(true);
-        QueryResults queryResults = queryXmlViewServiceAndHandleExceptions(
-            reportPathConfiguration, 
-            reportParams, 
-            report, 
-            outputFormat,
-            executionOptions);
-
-        if (!queryResults.isFinished())
+        final Span span = tracer.buildSpan("query-for-metadata-and-data").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
-            String queryId = queryResults.getQueryID();
-            xmlViewService.cancelQuery(queryId, sessionId);
-        }
+            ReportRef report = new ReportRef();
+            report.setReportPath(reportPathConfiguration.value());
 
-        operationTimer.stopAndLog("queried for metadata and data");
-        return queryResults.getRowset();
+            XMLQueryOutputFormat outputFormat = XMLQueryOutputFormat.SAW_ROWSET_SCHEMA_AND_DATA;
+            XMLQueryExecutionOptions executionOptions = new XMLQueryExecutionOptions();
+            executionOptions.setMaxRowsPerPage(maxRowsPerPage);
+
+            // note: the docs I've found don't explain this setting, but it seems
+            // that maxRowsPerPage is ignored when it is false.
+            executionOptions.setAsync(maxRowsPerPage != -1);
+
+            executionOptions.setPresentationInfo(true);
+            QueryResults queryResults = queryXmlViewServiceAndHandleExceptions(
+                reportPathConfiguration,
+                reportParams,
+                report,
+                outputFormat,
+                executionOptions
+            );
+
+            if (!queryResults.isFinished())
+            {
+                String queryId = queryResults.getQueryID();
+                xmlViewService.cancelQuery(queryId, sessionId);
+            }
+            return queryResults.getRowset();
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private QueryResults queryXmlViewServiceAndHandleExceptions(
@@ -677,7 +738,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         QueryResults queryResults;
         try
         {
-    		queryResults = xmlViewService.executeXMLQuery(
+            queryResults = xmlViewService.executeXMLQuery(
                 report, 
                 outputFormat, 
                 executionOptions, 
@@ -709,14 +770,14 @@ public class AnalyticsManagerImpl implements AnalyticsManager
     }
 
     /**
-	 * modifies the xml definition of the query to order the results by the desired column
-	 */
-	String prepareXml(String xml, String sortColumnId, SortDirection sortDirection)
-	{
+     * modifies the xml definition of the query to order the results by the desired column
+     */
+    String prepareXml(String xml, String sortColumnId, SortDirection sortDirection)
+    {
         Document reportDoc = buildXmlReportDocument(xml);
         replaceColumnOrderChildren(sortColumnId, sortDirection, reportDoc);
         return writeDocument(reportDoc);
-	}
+    }
 
     void replaceColumnOrderChildren(String sortColumnId, SortDirection sortDirection, Document reportDoc) {
         NodeList list = searchForColumnOrder(reportDoc);
@@ -793,31 +854,46 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         return writer.toString();
     }
 
-	private String formatParamsAsString(ReportParams params)
+    private String formatParamsAsString(ReportParams params)
     {
         return String.format("[variables=%s]", asMap(params.getVariables()));
     }
 
     private Map<String, Object> asMap(List<Variable> variables)
     {
-        Map<String, Object> variableMap = new HashMap<String, Object>();
+        Map<String, Object> variableMap = new HashMap<>();
         for (Variable variable : variables)
         {
             variableMap.put(variable.getName(), variable.getValue());
         }
         return variableMap;
     }
-    
 
 
     Document buildRowsetDocument(String rowset)
     {
-        return parseXmlString(rowset, "rowset from OBIEE");
+        final Span span = tracer.buildSpan("parse-rowset-document").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            return parseXmlString(rowset, "rowset from OBIEE");
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private Document buildXmlReportDocument(String report)
     {
-        return parseXmlString(report, "xml report definition");
+        final Span span = tracer.buildSpan("parse-report-document").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            return parseXmlString(report, "xml report definition");
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private Document parseXmlString(String xml, String description) {
@@ -829,14 +905,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             throw new DataRetrievalException(description + " is empty");
         }
 
-        operationTimer.start();
         InputSource inputsource = new InputSource(new StringReader(xml));
         String parseErrorMessage = "cannot parse " + description;
         try
         {
-            Document document = builder.parse(inputsource);
-            operationTimer.stopAndLog("parsed xml document: " + description);
-            return document;
+            return builder.parse(inputsource);
         }
         catch (SAXParseException e)
         {
@@ -848,12 +921,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                     e.getColumnNumber()),
                 e);
         }
-        catch (SAXException e)
-        {
-            recentException = e;
-            throw new DataRetrievalException(parseErrorMessage, e);
-        }
-        catch (IOException e)
+        catch (SAXException | IOException e)
         {
             recentException = e;
             throw new DataRetrievalException(parseErrorMessage, e);
@@ -862,10 +930,15 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     NodeList getColumnSchemaNodesFromPreamble(Document doc)
     {
-        operationTimer.start();
-        NodeList nodeList = evaluateXsdXPathAndHandleExceptions(doc);
-        operationTimer.stopAndLog("executed schema preamble xpath query");
-        return nodeList;
+        final Span span = tracer.buildSpan("xpath-for-schema").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            return evaluateXsdXPathAndHandleExceptions(doc);
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private NodeList evaluateXsdXPathAndHandleExceptions(Document doc)
@@ -880,13 +953,18 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             throw new RuntimeException("unable to evaluate xpath expression on document", e);
         }
     }
-    
+
     NodeList getRows(Document doc)
     {
-        operationTimer.start();
-        NodeList nodeList = executeRowXPathQueryAndHandleExceptions(doc);
-        operationTimer.stopAndLog("executed row xpath query");
-        return nodeList;
+        final Span span = tracer.buildSpan("xpath-for-data").start();
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
+        {
+            return executeRowXPathQueryAndHandleExceptions(doc);
+        }
+        finally
+        {
+            span.finish();
+        }
     }
 
     private NodeList executeRowXPathQueryAndHandleExceptions(Document doc)
@@ -949,13 +1027,18 @@ public class AnalyticsManagerImpl implements AnalyticsManager
 
     private void validateAnswersSession()
     {
-        try
+        final Span span = buildTopLevelSpan(tracer, "get-current-user");
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
             sawSessionService.getCurUser(sessionId);
         }
         catch (RuntimeException e)
         {
             throw new IllegalStateException("manager is no longer usable", e);
+        }
+        finally
+        {
+            span.finish();
         }
     }
 
@@ -969,9 +1052,11 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         executionOptions.setMaxRowsPerPage(1);
         executionOptions.setPresentationInfo(true);
         ReportParams reportParams = new ReportParams();
-        try
+        final Span span = buildTopLevelSpan(tracer, "validate-bi-server-session");
+        overrideResourceName(span, VALIDATION_REPORT_PATH);
+        try (Scope ignored = tracer.scopeManager().activate(span, false))
         {
-        	xmlViewService.executeXMLQuery(
+            xmlViewService.executeXMLQuery(
                 report, 
                 outputFormat, 
                 executionOptions, 
@@ -987,14 +1072,17 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                         SoapFaults.getDetailsAsString(e.getFault())), 
                     e);
         }
+        finally
+        {
+            span.finish();
+        }
     }
 
-
-    public void setOperationTimer(OperationTimer operationTimer)
+    private void overrideResourceName(Span span, String resourceName)
     {
-        this.operationTimer = operationTimer;
+        span.setTag("resource.name", resourceName);
     }
-    
+
 
     public void setQueryTimeout(long time, TimeUnit unit)
     {

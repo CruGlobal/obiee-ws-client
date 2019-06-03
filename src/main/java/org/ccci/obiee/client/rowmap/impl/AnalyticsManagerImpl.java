@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
+import io.opentracing.tag.Tags;
 import oracle.bi.web.soap.QueryResults;
 import oracle.bi.web.soap.ReportEditingServiceSoap;
 import oracle.bi.web.soap.ReportParams;
@@ -63,6 +64,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -72,6 +74,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static io.opentracing.log.Fields.ERROR_OBJECT;
 import static org.ccci.obiee.client.rowmap.impl.JodaTimeAvailability.isJodaAvailable;
 import static org.ccci.obiee.client.rowmap.impl.Tracing.buildTopLevelSpan;
 
@@ -183,6 +186,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             log.debug("logging off session " + sessionId);
             sawSessionService.logoff(sessionId);
             log.debug("logoff successful");
+        }
+        catch (Exception e)
+        {
+            Tags.ERROR.set(span, Boolean.TRUE);
+            span.log(Collections.singletonMap(ERROR_OBJECT, e));
+            throw e;
         }
         finally
         {
@@ -297,6 +306,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 RowBuilder<T> rowBuilder = buildRowBuilder(metadataDocument);
                 NodeList rows = getRows(dataDocument);
                 return buildResults(rowBuilder, rows);
+            }
+            catch (Exception e)
+            {
+                Tags.ERROR.set(span, Boolean.TRUE);
+                span.log(Collections.singletonMap(ERROR_OBJECT, e));
+                throw e;
             }
             finally
             {
@@ -1034,6 +1049,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (RuntimeException e)
         {
+            // This could be just a stale session, so we don't record an error on the span
             throw new IllegalStateException("manager is no longer usable", e);
         }
         finally
@@ -1065,6 +1081,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (SOAPFaultException e)
         {
+            // This could be just a stale session, so we don't record an error on the span
             throw new DataRetrievalException(
                     String.format(
                         "unable to query report %s; details follow:\n%s", 

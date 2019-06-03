@@ -1018,8 +1018,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         if (recentException != null)
         {
             throw new IllegalStateException(
-                "a recent exception has occurred.  Because it appears that long-running " +
-                "Obiee Answers sessions can sometimes experience unsual errors, this session has been " +
+                "A recent exception has occurred.  Because it appears that long-running " +
+                "Obiee Answers sessions can sometimes experience unusual errors, this session has been " +
                 "closed due to the following recent exception:",
                 recentException);
         }

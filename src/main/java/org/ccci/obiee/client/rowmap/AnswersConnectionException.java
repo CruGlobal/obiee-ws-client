@@ -9,13 +9,25 @@ public class AnswersConnectionException extends RuntimeException
 
     private static final long serialVersionUID = 1L;
 
+    private final String username;
+    private final String faultDetail;
+
     public AnswersConnectionException(String username, SOAPFaultException e)
     {
-        super(String.format(
-                "unable to connect to Answers with username %s; details follow:\n%s",
-                username,
-                SoapFaults.getDetailsAsString(e.getFault())),
-             e);
+        super("unable to connect to Answers", e);
+        this.username = username;
+        this.faultDetail = SoapFaults.getDetailsAsString(e.getFault());
     }
 
+    @SuppressWarnings("unused") // to be used in rollbar reports
+    public String getUsername()
+    {
+        return username;
+    }
+
+    @SuppressWarnings("unused") // see getUsername()
+    public String getFaultDetail()
+    {
+        return faultDetail;
+    }
 }

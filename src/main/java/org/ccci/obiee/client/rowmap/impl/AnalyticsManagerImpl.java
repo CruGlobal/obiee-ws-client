@@ -24,7 +24,6 @@ import org.ccci.obiee.client.rowmap.SortDirection;
 import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
 import org.ccci.obiee.client.rowmap.util.Doms;
-import org.ccci.obiee.client.rowmap.util.SoapFaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Attr;
@@ -586,14 +585,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             {
                 recentException = e;
                 throw new DataRetrievalException(
-                    String.format(
-                        "unable to generate xml for report %s with %s; details follow:\n%s",
-                        reportPathConfiguration.value(),
-                        formatParamsAsString(params),
-                        SoapFaults.getDetailsAsString(e.getFault())
-                    ),
-                    e
-                );
+                    "unable to generate xml",
+                    reportPathConfiguration.value(),
+                    params,
+                    e);
             }
         }
         finally
@@ -687,19 +682,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         catch (SOAPFaultException e)
         {
             recentException = e;
-            throw new DataRetrievalException(
-                    String.format(
-                        "unable to query with xml:\n%s\n\nsoapfault details follow:\n%s",
-                        xmlReport,
-                        SoapFaults.getDetailsAsString(e.getFault())), 
-                    e);
+            throw new DataRetrievalException("Soap fault from query", xmlReport, e);
         }
         catch (RuntimeException e)
         {
             recentException = e;
-            throw new DataRetrievalException(
-                    String.format("unable to query with xml:\n" +
-                                  "%s", xmlReport), e);
+            throw new DataRetrievalException(e.toString(), xmlReport, e);
         }
     }
 
@@ -750,38 +738,33 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             XMLQueryOutputFormat outputFormat,
             XMLQueryExecutionOptions executionOptions)
     {
-        QueryResults queryResults;
         try
         {
-            queryResults = xmlViewService.executeXMLQuery(
-                report, 
-                outputFormat, 
-                executionOptions, 
-                reportParams, 
-                sessionId);
+            return xmlViewService.executeXMLQuery(
+                    report,
+                    outputFormat,
+                    executionOptions,
+                    reportParams,
+                    sessionId);
         }
         catch (SOAPFaultException e)
         {
             recentException = e;
             throw new DataRetrievalException(
-                    String.format(
-                        "unable to query report %s with %s; details follow:\n%s", 
-                        reportPathConfiguration.value(),
-                        formatParamsAsString(reportParams),
-                        SoapFaults.getDetailsAsString(e.getFault())), 
-                    e);
+                "Soap fault from query",
+                reportPathConfiguration.value(),
+                reportParams,
+                e);
         }
         catch (RuntimeException e)
         {
             recentException = e;
             throw new DataRetrievalException(
-                String.format(
-                    "unable to query report %s with %s", 
+                    e.toString(),
                     reportPathConfiguration.value(),
-                    formatParamsAsString(reportParams)), 
-                        e);
+                    reportParams,
+                    e);
         }
-        return queryResults;
     }
 
     /**
@@ -868,22 +851,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         return writer.toString();
     }
-
-    private String formatParamsAsString(ReportParams params)
-    {
-        return String.format("[variables=%s]", asMap(params.getVariables()));
-    }
-
-    private Map<String, Object> asMap(List<Variable> variables)
-    {
-        Map<String, Object> variableMap = new HashMap<>();
-        for (Variable variable : variables)
-        {
-            variableMap.put(variable.getName(), variable.getValue());
-        }
-        return variableMap;
-    }
-
 
     Document buildRowsetDocument(String rowset)
     {
@@ -1083,11 +1050,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         {
             // This could be just a stale session, so we don't record an error on the span
             throw new DataRetrievalException(
-                    String.format(
-                        "unable to query report %s; details follow:\n%s", 
-                        VALIDATION_REPORT_PATH,
-                        SoapFaults.getDetailsAsString(e.getFault())), 
-                    e);
+                "Soap fault from validation query",
+                VALIDATION_REPORT_PATH,
+                null,
+                e);
         }
         finally
         {

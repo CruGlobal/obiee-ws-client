@@ -3,6 +3,8 @@ package org.ccci.obiee.client.rowmap.impl;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
+
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -10,6 +12,7 @@ import java.util.regex.Pattern;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.soap.SOAPFaultException;
 
+import io.opentracing.tag.Tags;
 import org.ccci.obiee.client.init.AnswersServiceFactory;
 import org.ccci.obiee.client.rowmap.AnalyticsManager;
 import org.ccci.obiee.client.rowmap.AnalyticsManagerFactory;
@@ -24,6 +27,7 @@ import oracle.bi.web.soap.XmlViewServiceSoap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static io.opentracing.log.Fields.ERROR_OBJECT;
 import static org.ccci.obiee.client.rowmap.impl.Tracing.buildTopLevelSpan;
 
 public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
@@ -106,6 +110,10 @@ public class AnalyticsManagerFactoryImpl implements AnalyticsManagerFactory
                 converterStore,
                 tracer
             );
+        } catch (Exception e) {
+            Tags.ERROR.set(span, Boolean.TRUE);
+            span.log(Collections.singletonMap(ERROR_OBJECT, e));
+            throw e;
         } finally {
             span.finish();
         }

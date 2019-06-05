@@ -125,7 +125,8 @@ public class StopwatchTracer implements Tracer
             @Override
             public Span setTag(String key, boolean value)
             {
-                throw new UnsupportedOperationException();
+                // ignore
+                return this;
             }
 
             @Override
@@ -137,7 +138,8 @@ public class StopwatchTracer implements Tracer
             @Override
             public Span log(Map<String, ?> fields)
             {
-                throw new UnsupportedOperationException();
+                // ignore
+                return this;
             }
 
             @Override

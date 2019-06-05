@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
+import io.opentracing.tag.Tags;
 import oracle.bi.web.soap.QueryResults;
 import oracle.bi.web.soap.ReportEditingServiceSoap;
 import oracle.bi.web.soap.ReportParams;
@@ -23,7 +24,6 @@ import org.ccci.obiee.client.rowmap.SortDirection;
 import org.ccci.obiee.client.rowmap.annotation.ReportParamVariable;
 import org.ccci.obiee.client.rowmap.annotation.ReportPath;
 import org.ccci.obiee.client.rowmap.util.Doms;
-import org.ccci.obiee.client.rowmap.util.SoapFaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Attr;
@@ -63,6 +63,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -72,6 +73,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static io.opentracing.log.Fields.ERROR_OBJECT;
 import static org.ccci.obiee.client.rowmap.impl.JodaTimeAvailability.isJodaAvailable;
 import static org.ccci.obiee.client.rowmap.impl.Tracing.buildTopLevelSpan;
 
@@ -183,6 +185,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             log.debug("logging off session " + sessionId);
             sawSessionService.logoff(sessionId);
             log.debug("logoff successful");
+        }
+        catch (Exception e)
+        {
+            Tags.ERROR.set(span, Boolean.TRUE);
+            span.log(Collections.singletonMap(ERROR_OBJECT, e));
+            throw e;
         }
         finally
         {
@@ -297,6 +305,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
                 RowBuilder<T> rowBuilder = buildRowBuilder(metadataDocument);
                 NodeList rows = getRows(dataDocument);
                 return buildResults(rowBuilder, rows);
+            }
+            catch (Exception e)
+            {
+                Tags.ERROR.set(span, Boolean.TRUE);
+                span.log(Collections.singletonMap(ERROR_OBJECT, e));
+                throw e;
             }
             finally
             {
@@ -571,14 +585,10 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             {
                 recentException = e;
                 throw new DataRetrievalException(
-                    String.format(
-                        "unable to generate xml for report %s with %s; details follow:\n%s",
-                        reportPathConfiguration.value(),
-                        formatParamsAsString(params),
-                        SoapFaults.getDetailsAsString(e.getFault())
-                    ),
-                    e
-                );
+                    "unable to generate xml",
+                    reportPathConfiguration.value(),
+                    params,
+                    e);
             }
         }
         finally
@@ -672,19 +682,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         catch (SOAPFaultException e)
         {
             recentException = e;
-            throw new DataRetrievalException(
-                    String.format(
-                        "unable to query with xml:\n%s\n\nsoapfault details follow:\n%s",
-                        xmlReport,
-                        SoapFaults.getDetailsAsString(e.getFault())), 
-                    e);
+            throw new DataRetrievalException("Soap fault from query", xmlReport, e);
         }
         catch (RuntimeException e)
         {
             recentException = e;
-            throw new DataRetrievalException(
-                    String.format("unable to query with xml:\n" +
-                                  "%s", xmlReport), e);
+            throw new DataRetrievalException(e.toString(), xmlReport, e);
         }
     }
 
@@ -735,38 +738,33 @@ public class AnalyticsManagerImpl implements AnalyticsManager
             XMLQueryOutputFormat outputFormat,
             XMLQueryExecutionOptions executionOptions)
     {
-        QueryResults queryResults;
         try
         {
-            queryResults = xmlViewService.executeXMLQuery(
-                report, 
-                outputFormat, 
-                executionOptions, 
-                reportParams, 
-                sessionId);
+            return xmlViewService.executeXMLQuery(
+                    report,
+                    outputFormat,
+                    executionOptions,
+                    reportParams,
+                    sessionId);
         }
         catch (SOAPFaultException e)
         {
             recentException = e;
             throw new DataRetrievalException(
-                    String.format(
-                        "unable to query report %s with %s; details follow:\n%s", 
-                        reportPathConfiguration.value(),
-                        formatParamsAsString(reportParams),
-                        SoapFaults.getDetailsAsString(e.getFault())), 
-                    e);
+                "Soap fault from query",
+                reportPathConfiguration.value(),
+                reportParams,
+                e);
         }
         catch (RuntimeException e)
         {
             recentException = e;
             throw new DataRetrievalException(
-                String.format(
-                    "unable to query report %s with %s", 
+                    e.toString(),
                     reportPathConfiguration.value(),
-                    formatParamsAsString(reportParams)), 
-                        e);
+                    reportParams,
+                    e);
         }
-        return queryResults;
     }
 
     /**
@@ -853,22 +851,6 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         return writer.toString();
     }
-
-    private String formatParamsAsString(ReportParams params)
-    {
-        return String.format("[variables=%s]", asMap(params.getVariables()));
-    }
-
-    private Map<String, Object> asMap(List<Variable> variables)
-    {
-        Map<String, Object> variableMap = new HashMap<>();
-        for (Variable variable : variables)
-        {
-            variableMap.put(variable.getName(), variable.getValue());
-        }
-        return variableMap;
-    }
-
 
     Document buildRowsetDocument(String rowset)
     {
@@ -1018,8 +1000,8 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         if (recentException != null)
         {
             throw new IllegalStateException(
-                "a recent exception has occurred.  Because it appears that long-running " +
-                "Obiee Answers sessions can sometimes experience unsual errors, this session has been " +
+                "A recent exception has occurred.  Because it appears that long-running " +
+                "Obiee Answers sessions can sometimes experience unusual errors, this session has been " +
                 "closed due to the following recent exception:",
                 recentException);
         }
@@ -1034,6 +1016,7 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (RuntimeException e)
         {
+            // This could be just a stale session, so we don't record an error on the span
             throw new IllegalStateException("manager is no longer usable", e);
         }
         finally
@@ -1065,12 +1048,12 @@ public class AnalyticsManagerImpl implements AnalyticsManager
         }
         catch (SOAPFaultException e)
         {
+            // This could be just a stale session, so we don't record an error on the span
             throw new DataRetrievalException(
-                    String.format(
-                        "unable to query report %s; details follow:\n%s", 
-                        VALIDATION_REPORT_PATH,
-                        SoapFaults.getDetailsAsString(e.getFault())), 
-                    e);
+                "Soap fault from validation query",
+                VALIDATION_REPORT_PATH,
+                null,
+                e);
         }
         finally
         {
